@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ exam.title }} | ExamFlow{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'exam_list' %}">Exams</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ exam.title }}</li>
+            </ol>
+        </nav>
+
+        <div class="card shadow-sm border-0 mb-4 overflow-hidden">
+            {% if exam.thumbnail %}
+            <img src="{{ exam.thumbnail.url }}" class="card-img-top" style="height: 250px; object-fit: cover;"
+                alt="{{ exam.title }}">
+            {% else %}
+            <div class="bg-primary pt-5 pb-4 px-4 text-white">
+                <span class="badge bg-light text-primary mb-2">{{ exam.category.name }}</span>
+                <h2 class="mb-0 text-white">{{ exam.title }}</h2>
+            </div>
+            {% endif %}
+
+            <div class="card-body p-4 p-md-5">
+                {% if exam.thumbnail %}
+                <span class="badge bg-primary mb-2">{{ exam.category.name }}</span>
+                <h2 class="mb-3">{{ exam.title }}</h2>
+                {% endif %}
+
+                <p class="lead text-muted">{{ exam.description }}</p>
+
+                <div class="row g-3 my-4">
+                    <div class="col-6 col-sm-3">
+                        <div class="border rounded p-3 text-center bg-light">
+                            <i class="fas fa-clock fa-2x text-primary mb-2"></i>
+                            <h5 class="mb-0">{{ exam.duration_minutes }}</h5>
+                            <small class="text-muted">Minutes</small>
+                        </div>
+                    </div>
+                    <div class="col-6 col-sm-3">
+                        <div class="border rounded p-3 text-center bg-light">
+                            <i class="fas fa-list-ol fa-2x text-accent mb-2"></i>
+                            <h5 class="mb-0">{{ exam.questions.count }}</h5>
+                            <small class="text-muted">Questions</small>
+                        </div>
+                    </div>
+                    <div class="col-6 col-sm-3">
+                        <div class="border rounded p-3 text-center bg-light">
+                            <i class="fas fa-star fa-2x text-warning mb-2"></i>
+                            <h5 class="mb-0">{{ exam.total_marks }}</h5>
+                            <small class="text-muted">Total Marks</small>
+                        </div>
+                    </div>
+                    <div class="col-6 col-sm-3">
+                        <div class="border rounded p-3 text-center bg-light">
+                            <i class="fas fa-flag-checkered fa-2x text-success mb-2"></i>
+                            <h5 class="mb-0">{{ exam.pass_marks }}</h5>
+                            <small class="text-muted">Passing</small>
+                        </div>
+                    </div>
+                </div>
+
+                {% if exam.instructions %}
+                <div class="mt-4 mb-5">
+                    <h5 class="border-bottom pb-2">Instructions</h5>
+                    <div class="text-muted">{{ exam.instructions|linebreaks }}</div>
+                </div>
+                {% endif %}
+
+                <div
+                    class="bg-light p-4 rounded-3 d-flex flex-column flex-md-row justify-content-between align-items-center">
+                    <div class="mb-3 mb-md-0">
+                        <span class="d-block fw-bold text-dark mb-1">
+                            Your Attempts: {{ user_attempts }} /
+                            {% if exam.max_attempts > 0 %}
+                            {{ exam.max_attempts }}
+                            {% else %}
+                            Unlimited
+                            {% endif %}
+                        </span>
+                        <a href="{% url 'exam_leaderboard' slug=exam.slug %}" class="small"><i
+                                class="fas fa-trophy text-warning"></i> View Leaderboard</a>
+                    </div>
+
+                    {% if user.is_authenticated %}
+                    {% if in_progress_attempt %}
+                    <a href="{% url 'exam_attempt' slug=exam.slug id=in_progress_attempt.id %}" class="btn btn-accent btn-lg px-5 shadow-sm">
+                        Resume Exam
+                    </a>
+                    {% elif not has_questions %}
+                    <button class="btn btn-secondary btn-lg px-5 disabled">No Questions Added Yet</button>
+                    {% elif can_attempt %}
+                    <a href="{% url 'exam_start' slug=exam.slug %}" class="btn btn-accent btn-lg px-5 shadow-sm">Start
+                        Exam Now</a>
+                    {% else %}
+                    <button class="btn btn-secondary btn-lg px-5 disabled">Max Attempts Reached</button>
+                    {% endif %}
+                    {% else %}
+                    <a href="{% url 'login' %}?next={{ request.path }}" class="btn btn-primary btn-lg px-5">Login to
+                        Start</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

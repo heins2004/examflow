@@ -1,0 +1,363 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attempting {{ exam.title }}</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        (function () {
+            const isDark = localStorage.getItem('darkMode') === 'true';
+            document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+        })();
+    </script>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body {
+            background-color: var(--bg-color);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .exam-header {
+            background: var(--primary-color);
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+        }
+
+        .exam-body {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .sidebar-right {
+            width: 300px;
+            background: var(--navbar-bg);
+            border-left: 1px solid var(--border-color);
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #timer {
+            font-size: 1.5rem;
+            font-weight: bold;
+            font-family: monospace;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 5px 15px;
+            border-radius: 5px;
+        }
+
+        .question-card {
+            display: none;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .question-card.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        .option-label {
+            display: block;
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .option-label:hover {
+            background: rgba(108, 99, 255, 0.05);
+            border-color: var(--accent-color);
+        }
+
+        .option-input:checked+.option-label {
+            background: rgba(108, 99, 255, 0.1);
+            border-color: var(--accent-color);
+            font-weight: 600;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Anti-cheat overlay */
+        #warning-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 9999;
+            color: white;
+            text-align: center;
+            flex-direction: column;
+            justify-content: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="warning-overlay">
+        <i class="fas fa-exclamation-triangle fa-5x text-warning mb-4"></i>
+        <h2>Warning: Tab Switching Detected!</h2>
+        <p class="lead">Please do not navigate away from this exam. Your actions are being recorded.</p>
+        <button class="btn btn-warning mt-4 mx-auto" style="width:200px"
+            onclick="document.getElementById('warning-overlay').style.display='none'">I Understand</button>
+    </div>
+
+    <div class="exam-header">
+        <div>
+            <h5 class="mb-0" style="font-family: 'Poppins', sans-serif;">{{ exam.title }}</h5>
+            <small>{{ user.username }}</small>
+        </div>
+        <button id="darkModeToggle" class="btn btn-sm btn-outline-light">
+            <i class="fas fa-moon"></i>
+        </button>
+        <div id="timer">--:--:--</div>
+        <button id="finalSubmitBtn" class="btn btn-danger fw-bold">Finish Setup & Run Submit</button>
+    </div>
+
+    <div class="exam-body">
+        <div class="main-content" id="questionContainer">
+            {% for q in questions %}
+            <div class="question-card" id="qcard-{{ forloop.counter }}" data-id="{{ q.id }}"
+                data-type="{{ q.question_type }}">
+                <div class="d-flex justify-content-between mb-3">
+                    <span class="badge bg-secondary">Question {{ forloop.counter }} of {{ questions|length }}</span>
+                    <span class="text-muted fw-bold">{{ q.marks }} Marks</span>
+                </div>
+                <h4 class="mb-4">{{ q.question_text|linebreaksbr }}</h4>
+                {% if q.image %}
+                <img src="{{ q.image.url }}" class="img-fluid rounded mb-4 max-height-300">
+                {% endif %}
+
+                <div class="options-container">
+                    {% if q.question_type == 'FILL_BLANK' %}
+                    <div class="mb-3">
+                        <input type="text" class="form-control form-control-lg q-answer-text"
+                            placeholder="Type your answer here...">
+                    </div>
+                    {% else %}
+                    {% for opt in q.options.all %}
+                    <div class="form-check p-0">
+                        <input class="form-check-input d-none option-input q-answer-radio" type="radio"
+                            name="q_{{ q.id }}" id="opt_{{ opt.id }}" value="{{ opt.id }}">
+                        <label class="form-check-label option-label" for="opt_{{ opt.id }}">
+                            {% if opt.option_image %}
+                            <img src="{{ opt.option_image.url }}" height="50" class="me-2">
+                            {% endif %}
+                            {{ opt.option_text }}
+                        </label>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                </div>
+
+                <div class="d-flex justify-content-between mt-5 pt-3 border-top">
+                    <button class="btn btn-outline-secondary btn-prev"><i class="fas fa-chevron-left me-2"></i>
+                        Previous</button>
+                    <button class="btn btn-outline-warning btn-mark"><i class="fas fa-flag"></i> Mark for
+                        Review</button>
+                    <button class="btn btn-primary btn-next px-4">Next <i
+                            class="fas fa-chevron-right ms-2"></i></button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="sidebar-right">
+            <h6 class="mb-3">Question Navigator</h6>
+            <div class="d-flex gap-2 text-muted small mb-3 align-items-center">
+                <span class="d-flex align-items-center">
+                    <div class="nav-btn answered me-1" style="width:15px;height:15px;line-height:0"></div> Answered
+                </span>
+                <span class="d-flex align-items-center">
+                    <div class="nav-btn marked me-1"
+                        style="width:15px;height:15px;border:2px solid var(--accent-color)"></div> Review
+                </span>
+            </div>
+            <div class="question-nav" id="navGrid">
+                {% for q in questions %}
+                <div class="nav-btn" data-index="{{ forloop.counter }}">{{ forloop.counter }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="mt-auto pt-4 pb-2 text-center text-muted small">
+                Status: <span id="sync-status" class="text-success"><i class="fas fa-check-circle"></i> Synced</span>
+            </div>
+            <form id="submitForm" method="post" action="{% url 'exam_attempt' slug=exam.slug id=attempt.id %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger w-100 fw-bold py-2 mt-2"
+                    onclick="return confirm('Are you sure you want to submit the exam?');">SUBMIT EXAM</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Initialization Data -->
+    <script>
+        const TIME_REMAINING = parseInt("{{ time_remaining }}");
+        const ANSWERED_MAP = {{ answered_map| safe }};
+        const URL_SAVE = "{% url 'exam_attempt' slug=exam.slug id=attempt.id %}";
+        const CSRF_TOKEN = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    </script>
+    <script src="{% static 'js/main.js' %}"></script>
+    <script>
+        let currentQ = 1;
+        const totalQ = {{ questions| length }};
+        let timeLeft = TIME_REMAINING;
+
+        // Populate saved answers
+        document.querySelectorAll('.question-card').forEach((card, idx) => {
+            let qId = card.getAttribute('data-id');
+            let qType = card.getAttribute('data-type');
+            if (ANSWERED_MAP[qId]) {
+                if (qType === 'FILL_BLANK') {
+                    card.querySelector('.q-answer-text').value = ANSWERED_MAP[qId];
+                } else {
+                    let r = card.querySelector(`#opt_${ANSWERED_MAP[qId]}`);
+                    if (r) r.checked = true;
+                }
+                document.querySelector(`.nav-btn[data-index="${idx + 1}"]`).classList.add('answered');
+            }
+        });
+
+        function showQuestion(n) {
+            document.querySelectorAll('.question-card').forEach(q => q.classList.remove('active'));
+            const elm = document.getElementById(`qcard-${n}`);
+            if (elm) elm.classList.add('active');
+            currentQ = n;
+
+            let navBtn = document.querySelector(`.nav-btn[data-index="${n}"]`);
+            if (!navBtn.classList.contains('answered')) {
+                navBtn.classList.add('visited');
+            }
+        }
+
+        // Navigation
+        document.addEventListener('click', e => {
+            if (e.target.closest('.btn-next')) {
+                if (currentQ < totalQ) showQuestion(currentQ + 1);
+            }
+            if (e.target.closest('.btn-prev')) {
+                if (currentQ > 1) showQuestion(currentQ - 1);
+            }
+            if (e.target.closest('.nav-btn')) {
+                showQuestion(parseInt(e.target.closest('.nav-btn').getAttribute('data-index')));
+            }
+            if (e.target.closest('.btn-mark')) {
+                let navBtn = document.querySelector(`.nav-btn[data-index="${currentQ}"]`);
+                navBtn.classList.toggle('marked');
+            }
+        });
+
+        // AJAX Save
+        function saveAnswer(qId, optId, txtAns) {
+            document.getElementById('sync-status').innerHTML = '<i class="fas fa-sync fa-spin"></i> Saving...';
+            document.getElementById('sync-status').className = "text-warning";
+
+            fetch(URL_SAVE, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN, 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify({ action: 'save_answer', question_id: qId, option_id: optId, text_answer: txtAns })
+            }).then(r => r.json()).then(d => {
+                if (d.status === 'ok') {
+                    document.getElementById('sync-status').innerHTML = '<i class="fas fa-check-circle"></i> Synced';
+                    document.getElementById('sync-status').className = "text-success";
+                }
+            });
+        }
+
+        document.querySelectorAll('.q-answer-radio').forEach(r => {
+            r.addEventListener('change', (e) => {
+                let card = e.target.closest('.question-card');
+                document.querySelector(`.nav-btn[data-index="${card.id.split('-')[1]}"]`).classList.add('answered');
+                saveAnswer(card.getAttribute('data-id'), e.target.value, null);
+            });
+        });
+
+        document.querySelectorAll('.q-answer-text').forEach(inpt => {
+            let timeout = null;
+            inpt.addEventListener('keyup', (e) => {
+                clearTimeout(timeout);
+                let card = e.target.closest('.question-card');
+                let val = e.target.value.trim();
+                let navBtn = document.querySelector(`.nav-btn[data-index="${card.id.split('-')[1]}"]`);
+                if (val) navBtn.classList.add('answered'); else navBtn.classList.remove('answered');
+
+                timeout = setTimeout(() => {
+                    saveAnswer(card.getAttribute('data-id'), null, val);
+                }, 1000);
+            });
+        });
+
+        // Timer
+        function updateTimer() {
+            if (timeLeft <= 0) {
+                document.getElementById('submitForm').submit();
+                return;
+            }
+            let h = Math.floor(timeLeft / 3600);
+            let m = Math.floor((timeLeft % 3600) / 60);
+            let s = Math.floor(timeLeft % 60);
+            document.getElementById('timer').innerText =
+                `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            if (timeLeft < 300) document.getElementById('timer').style.color = 'yellow';
+            if (timeLeft < 60) document.getElementById('timer').style.color = 'red';
+            timeLeft--;
+        }
+        setInterval(updateTimer, 1000);
+        updateTimer();
+        showQuestion(1);
+
+        // Anti cheat
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                document.getElementById('warning-overlay').style.display = 'flex';
+            }
+        });
+
+        document.getElementById('finalSubmitBtn').addEventListener('click', () => {
+            document.getElementById('submitForm').submit();
+        });
+    </script>
+</body>
+
+</html>

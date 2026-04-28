@@ -1,0 +1,63 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% block content_title %}User Management{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <h6 class="m-0 fw-bold text-primary">All Users</h6>
+        <div class="d-flex gap-2">
+            <input type="text" class="form-control form-control-sm" placeholder="Search users...">
+            {% if user.role == 'ADMIN' or user.is_superuser %}
+            <a href="{% url 'dashboard_user_create' %}" class="btn btn-sm btn-primary"><i class="fas fa-user-plus"></i> Add User</a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 text-nowrap">
+                <thead>
+                    <tr>
+                        <th class="ps-3">Username</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Join Date</th>
+                        <th>Total Attempts</th>
+                        <th class="pe-3 text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr>
+                        <td class="ps-3 fw-bold">{{ u.username }}</td>
+                        <td>{{ u.email }}</td>
+                        <td>
+                            {% if u.role == 'ADMIN' or u.is_superuser %}
+                            <span class="badge bg-danger">Admin</span>
+                            {% elif u.role == 'EXAMINER' %}
+                            <span class="badge bg-primary">Examiner</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Student</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ u.date_joined|date:"M d, Y" }}</td>
+                        <td>{{ u.attempts_count }}</td>
+                        <td class="pe-3 text-end">
+                            {% if user.role == 'ADMIN' or user.is_superuser %}
+                            <a href="{% url 'dashboard_user_edit' pk=u.pk %}" class="btn btn-sm btn-outline-warning" title="Edit User"><i
+                                    class="fas fa-user-cog"></i></a>
+                            {% else %}
+                            <span class="text-muted small">Admin only</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4">No users found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

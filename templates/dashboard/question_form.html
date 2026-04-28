@@ -1,0 +1,57 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% load crispy_forms_tags %}
+
+{% block content_title %}{{ object|yesno:"Edit Question,Create Question" }}{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            {{ form.exam|crispy }}
+            {{ form.question_text|crispy }}
+            {{ form.question_type|crispy }}
+            {{ form.image|crispy }}
+
+            <div class="row">
+                <div class="col-md-4">{{ form.marks|crispy }}</div>
+                <div class="col-md-4">{{ form.negative_marks|crispy }}</div>
+                <div class="col-md-4">{{ form.order|crispy }}</div>
+            </div>
+
+            {{ form.explanation|crispy }}
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">Answer Setup</h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">
+                        For `MCQ` and `Image Based`, fill options and choose the correct one.
+                        For `True/False`, select the correct answer.
+                        For `Fill in the Blank`, enter the expected answer.
+                    </p>
+
+                    <div class="row">
+                        <div class="col-md-6">{{ form.option_1|crispy }}</div>
+                        <div class="col-md-6">{{ form.option_2|crispy }}</div>
+                        <div class="col-md-6">{{ form.option_3|crispy }}</div>
+                        <div class="col-md-6">{{ form.option_4|crispy }}</div>
+                    </div>
+
+                    {{ form.correct_option|crispy }}
+                    {{ form.true_false_answer|crispy }}
+                    {{ form.fill_blank_answer|crispy }}
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <a href="{% url 'dashboard_questions' exam_id=current_exam.id %}"
+                    class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">Save Question</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

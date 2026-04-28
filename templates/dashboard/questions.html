@@ -1,0 +1,55 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% block content_title %}Questions | {{ exam.title }}{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <div>
+            <h6 class="m-0 fw-bold text-primary">{{ exam.title }}</h6>
+            <small class="text-muted">{{ questions|length }} question{{ questions|length|pluralize }}</small>
+        </div>
+        <a href="{% url 'dashboard_question_create' exam_id=exam.id %}" class="btn btn-sm btn-primary">
+            <i class="fas fa-plus"></i> Add Question
+        </a>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 text-nowrap">
+                <thead>
+                    <tr>
+                        <th class="ps-3">Order</th>
+                        <th>Question</th>
+                        <th>Type</th>
+                        <th>Marks</th>
+                        <th>Options</th>
+                        <th class="pe-3 text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for question in questions %}
+                    <tr>
+                        <td class="ps-3">{{ question.order }}</td>
+                        <td class="fw-semibold">{{ question.question_text|truncatechars:70 }}</td>
+                        <td>{{ question.get_question_type_display }}</td>
+                        <td>{{ question.marks }}</td>
+                        <td>{{ question.options.count }}</td>
+                        <td class="pe-3 text-end">
+                            <a href="{% url 'dashboard_question_edit' pk=question.pk %}" class="btn btn-sm btn-outline-info">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="{% url 'dashboard_question_delete' pk=question.pk %}" class="btn btn-sm btn-outline-danger">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4">No questions added yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

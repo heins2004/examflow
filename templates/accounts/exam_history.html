@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block title %}Exam History | ExamFlow{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm p-4">
+    <h4 class="mb-4 text-primary border-bottom pb-2"><i class="fas fa-history me-2"></i> Exam History</h4>
+
+    {% if attempts %}
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Exam</th>
+                    <th>Category</th>
+                    <th>Date Taken</th>
+                    <th>Time Taken</th>
+                    <th>Score / Total</th>
+                    <th>Percentage</th>
+                    <th>Result</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for attempt in attempts %}
+                <tr>
+                    <td class="fw-bold">{{ attempt.exam.title }}</td>
+                    <td><span class="badge bg-secondary">{{ attempt.exam.category.name }}</span></td>
+                    <td>{{ attempt.submitted_at|date:"M d, Y H:i" }}</td>
+                    <td>{{ attempt.time_taken_seconds }} sec</td>
+                    <td>{{ attempt.score }} / {{ attempt.exam.total_marks }}</td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <span class="me-2">{{ attempt.percentage }}%</span>
+                            <div class="progress" style="width: 50px; height: 6px;">
+                                <div class="progress-bar {% if attempt.is_passed %}bg-success{% else %}bg-danger{% endif %}"
+                                    role="progressbar" style="width: {{ attempt.percentage }}%"></div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        {% if attempt.is_passed %}
+                        <span class="badge bg-success">Passed</span>
+                        {% else %}
+                        <span class="badge bg-danger">Failed</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'exam_result' slug=attempt.exam.slug id=attempt.id %}"
+                            class="btn btn-sm btn-outline-primary">View Result</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-folder-open fa-4x text-muted mb-3 opacity-25"></i>
+        <h5 class="text-muted">No completed exams yet</h5>
+        <a href="{% url 'exam_list' %}" class="btn btn-accent mt-3">Browse Exams</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

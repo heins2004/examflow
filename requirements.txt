@@ -1,0 +1,8 @@
+Django>=4.2
+mysqlclient
+PyMySQL
+Pillow
+python-decouple
+reportlab
+django-crispy-forms
+crispy-bootstrap5

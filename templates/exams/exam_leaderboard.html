@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}Leaderboard: {{ exam.title }} | ExamFlow{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'exam_list' %}">Exams</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'exam_detail' slug=exam.slug %}">{{ exam.title }}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Leaderboard</li>
+            </ol>
+        </nav>
+
+        <div class="card shadow-sm p-4">
+            <h3 class="text-center text-primary mb-2"><i class="fas fa-trophy text-warning"></i> Leaderboard</h3>
+            <p class="text-center text-muted mb-4">{{ exam.title }}</p>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Rank</th>
+                            <th>Student</th>
+                            <th>Score</th>
+                            <th>Percentage</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for attempt in top_attempts %}
+                        <tr class="{% if attempt.user == request.user %}table-primary fw-bold{% endif %}">
+                            <td>
+                                {% if forloop.counter == 1 %}<i class="fas fa-medal text-warning fa-2x"></i>
+                                {% elif forloop.counter == 2 %}<i class="fas fa-medal text-secondary fa-2x"></i>
+                                {% elif forloop.counter == 3 %}<i class="fas fa-medal text-danger fa-2x"></i>
+                                {% else %}<span class="ms-md-2 ms-0 fs-5">{{ forloop.counter }}</span>{% endif %}
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    {% if attempt.user.profile_picture %}
+                                    <img src="{{ attempt.user.profile_picture.url }}" class="rounded-circle me-3"
+                                        style="width: 40px; height: 40px; object-fit: cover;">
+                                    {% else %}
+                                    <div class="bg-secondary text-white rounded-circle me-3 d-flex align-items-center justify-content-center"
+                                        style="width: 40px; height: 40px;">
+                                        {{ attempt.user.username.0|upper }}
+                                    </div>
+                                    {% endif %}
+                                    <span>{{ attempt.user.username }}</span>
+                                </div>
+                            </td>
+                            <td>{{ attempt.score }}</td>
+                            <td>{{ attempt.percentage }}%</td>
+                            <td>{{ attempt.time_taken_seconds }}s</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4">No completed attempts yet. Be the first!</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="text-center mt-4">
+                <a href="{% url 'exam_detail' slug=exam.slug %}" class="btn btn-outline-primary px-4">Back to Exam</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

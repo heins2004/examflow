@@ -1,0 +1,19 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% load crispy_forms_tags %}
+
+{% block content_title %}{{ object|yesno:"Edit Exam,Create Exam" }}{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{ form|crispy }}
+            <div class="mt-4">
+                <a href="{% url 'dashboard_exams' %}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">Save Exam</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

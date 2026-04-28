@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Edit Profile | ExamFlow{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card p-4 shadow-sm">
+            <h4 class="mb-4 text-primary border-bottom pb-2">Edit Profile</h4>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-6">{{ form.first_name|crispy }}</div>
+                    <div class="col-md-6">{{ form.last_name|crispy }}</div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">{{ form.phone|crispy }}</div>
+                    <div class="col-md-6">{{ form.gender|crispy }}</div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">{{ form.date_of_birth|crispy }}</div>
+                    <div class="col-md-6">{{ form.profile_picture|crispy }}</div>
+                </div>
+                {{ form.bio|crispy }}
+
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <a href="{% url 'profile' %}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

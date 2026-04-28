@@ -1,0 +1,60 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% block content_title %}Exams Management{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <h6 class="m-0 fw-bold text-primary">All Exams</h6>
+        <a href="{% url 'dashboard_exam_create' %}" class="btn btn-sm btn-primary"><i class="fas fa-plus shadow-sm"></i>
+            Add Exam</a>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 text-nowrap">
+                <thead>
+                    <tr>
+                        <th class="ps-3">Title</th>
+                        <th>Category</th>
+                        <th>Type</th>
+                        <th>Duration</th>
+                        <th>Attempts</th>
+                        <th>Status</th>
+                        <th class="pe-3 text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for exam in exams %}
+                    <tr>
+                        <td class="ps-3 fw-bold">{{ exam.title }}</td>
+                        <td><span class="badge bg-secondary">{{ exam.category.name }}</span></td>
+                        <td>{{ exam.get_exam_type_display }}</td>
+                        <td>{{ exam.duration_minutes }}m</td>
+                        <td>{{ exam.attempts_count }}</td>
+                        <td>
+                            {% if exam.is_active %}
+                            <span class="badge bg-success">Active</span>
+                            {% else %}
+                            <span class="badge bg-danger">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td class="pe-3 text-end">
+                            <a href="{% url 'dashboard_questions' exam_id=exam.pk %}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-list"></i>
+                            </a>
+                            <a href="{% url 'dashboard_exam_edit' pk=exam.pk %}" class="btn btn-sm btn-outline-info"><i
+                                    class="fas fa-edit"></i></a>
+                            <a href="{% url 'dashboard_exam_delete' pk=exam.pk %}"
+                                class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4">No exams found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% block title %}Profile | ExamFlow{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4 mb-4">
+        <div class="card shadow-sm text-center p-4">
+            {% if user.profile_picture %}
+            <img src="{{ user.profile_picture.url }}" alt="Profile Picture" class="rounded-circle mb-3 mx-auto"
+                style="width: 120px; height: 120px; object-fit: cover;">
+            {% else %}
+            <div class="bg-primary text-white rounded-circle mb-3 mx-auto d-flex align-items-center justify-content-center"
+                style="width: 120px; height: 120px; font-size: 3rem;">
+                {{ user.username.0|upper }}
+            </div>
+            {% endif %}
+            <h4 class="mb-1">{{ user.get_full_name|default:user.username }}</h4>
+            <p class="text-muted small mb-3">{{ user.email }}</p>
+            <span class="badge bg-secondary mb-3">{{ user.get_role_display }}</span>
+            <a href="{% url 'profile_edit' %}" class="btn btn-outline-primary btn-sm w-100">Edit Profile</a>
+            {% if user.is_staff or user.role == 'ADMIN' or user.role == 'EXAMINER' %}
+            <a href="{% url 'dashboard_home' %}" class="btn btn-primary btn-sm w-100 mt-2">Open Dashboard</a>
+            {% endif %}
+        </div>
+
+        <div class="card shadow-sm mt-4 p-3">
+            <h6 class="border-bottom pb-2 mb-3">About Me</h6>
+            <p class="small text-muted">{{ user.bio|default:"No bio provided." }}</p>
+            <ul class="list-unstyled small text-muted mb-0">
+                <li class="mb-1"><i class="fas fa-phone me-2"></i> {{ user.phone|default:"Not provided" }}</li>
+                <li class="mb-1"><i class="fas fa-birthday-cake me-2"></i> {{ user.date_of_birth|default:"Not provided"
+                    }}</li>
+                <li><i class="fas fa-venus-mars me-2"></i> {{ user.get_gender_display|default:"Not provided" }}</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card bg-primary text-white text-center p-3 shadow-sm h-100">
+                    <h2 class="mb-0">{{ total_exams }}</h2>
+                    <span class="small opacity-75">Exams Taken</span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-accent text-white text-center p-3 shadow-sm h-100">
+                    <h2 class="mb-0">{{ avg_score|floatformat:1 }}%</h2>
+                    <span class="small opacity-75">Average Score</span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-success text-white text-center p-3 shadow-sm h-100">
+                    <h2 class="mb-0">{{ pass_rate|floatformat:0 }}%</h2>
+                    <span class="small opacity-75">Pass Rate</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
+                <h5 class="mb-0">Recent Activity</h5>
+                <a href="{% url 'exam_history' %}" class="small text-decoration-none">View All</a>
+            </div>
+            {% if recent_attempts %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Exam</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Score</th>
+                            <th>Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for attempt in recent_attempts %}
+                        <tr>
+                            <td>{{ attempt.exam.title }}</td>
+                            <td>{{ attempt.started_at|date:"M d, Y" }}</td>
+                            <td>
+                                {% if attempt.status == 'SUBMITTED' %}
+                                <span class="badge bg-success">Completed</span>
+                                {% elif attempt.status == 'TIMED_OUT' %}
+                                <span class="badge bg-warning">Timed Out</span>
+                                {% else %}
+                                <span class="badge bg-secondary">In Progress</span>
+                                {% endif %}
+                            </td>
+                            <td>{% if attempt.status != 'IN_PROGRESS' %}{{ attempt.percentage }}%{% else %}-{% endif %}
+                            </td>
+                            <td>
+                                {% if attempt.status != 'IN_PROGRESS' %}
+                                {% if attempt.is_passed %}
+                                <span class="text-success fw-bold"><i class="fas fa-check-circle"></i> Pass</span>
+                                {% else %}
+                                <span class="text-danger fw-bold"><i class="fas fa-times-circle"></i> Fail</span>
+                                {% endif %}
+                                {% else %}
+                                <a href="{% url 'exam_attempt' slug=attempt.exam.slug id=attempt.id %}"
+                                    class="btn btn-sm btn-outline-primary">Resume</a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted text-center py-4">No exam attempts yet. <a href="{% url 'exam_list' %}">Take an
+                    exam!</a></p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
