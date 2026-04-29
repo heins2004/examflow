@@ -22,6 +22,8 @@ class BootstrapFormMixin:
 
 
 class CustomUserCreationForm(BootstrapFormMixin, UserCreationForm):
+    EXAMINER_FEE = 499.00
+
     role = forms.ChoiceField(
         choices=[
             (User.Role.STUDENT, 'Student'),
@@ -29,10 +31,33 @@ class CustomUserCreationForm(BootstrapFormMixin, UserCreationForm):
         ],
         initial=User.Role.STUDENT,
     )
+    examiner_demo_payment = forms.BooleanField(
+        required=False,
+        label='Demo examiner payment confirmed',
+        help_text='Required only if you want to register as an examiner.',
+    )
 
     class Meta:
         model = User
-        fields = ('username', 'email', 'role')
+        fields = ('username', 'email', 'role', 'examiner_demo_payment')
+
+    def clean(self):
+        cleaned_data = super().clean()
+        role = cleaned_data.get('role')
+        paid = cleaned_data.get('examiner_demo_payment')
+        if role == User.Role.EXAMINER and not paid:
+            self.add_error('examiner_demo_payment', 'Examiner registration requires the demo payment confirmation.')
+        return cleaned_data
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        if user.role == User.Role.EXAMINER:
+            user.examiner_payment_status = User.PaymentStatus.PAID
+            user.examiner_payment_amount = self.EXAMINER_FEE
+            user.examiner_payment_reference = f"DEMO-PAY-{user.username.upper()}"
+        if commit:
+            user.save()
+        return user
 
 
 class CustomAuthenticationForm(BootstrapFormMixin, AuthenticationForm):

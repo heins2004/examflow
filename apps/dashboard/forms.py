@@ -10,6 +10,9 @@ from apps.exams.models import Category, Exam, Option, Question
 
 class ExamForm(BootstrapFormMixin, forms.ModelForm):
     slug = forms.SlugField(required=False, help_text="Leave blank to generate automatically.")
+    exam_code = forms.CharField(required=False, help_text="Leave blank to generate automatically.")
+    access_code = forms.CharField(required=False, help_text="Required only for private exams.")
+    pass_key = forms.CharField(required=False, help_text="Optional student pass key shared by the examiner.")
 
     class Meta:
         model = Exam
@@ -32,6 +35,31 @@ class ExamForm(BootstrapFormMixin, forms.ModelForm):
         if queryset.exists():
             raise forms.ValidationError("An exam with this slug already exists.")
         return slug
+
+    def clean_exam_code(self):
+        exam_code = (self.cleaned_data.get("exam_code") or "").strip().upper()
+        if not exam_code:
+            return exam_code
+
+        queryset = Exam.objects.filter(exam_code=exam_code)
+        if self.instance.pk:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise forms.ValidationError("An exam with this exam code already exists.")
+        return exam_code
+
+    def clean(self):
+        cleaned_data = super().clean()
+        visibility = cleaned_data.get("visibility")
+        access_code = (cleaned_data.get("access_code") or "").strip().upper()
+        pass_key = (cleaned_data.get("pass_key") or "").strip().upper()
+
+        if visibility == "PRIVATE" and not access_code:
+            self.add_error("access_code", "Private exams require an access code.")
+
+        cleaned_data["access_code"] = access_code
+        cleaned_data["pass_key"] = pass_key
+        return cleaned_data
 
 
 class CategoryForm(BootstrapFormMixin, forms.ModelForm):

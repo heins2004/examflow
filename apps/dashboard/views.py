@@ -1,4 +1,5 @@
 from django.shortcuts import render, get_object_or_404
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, UpdateView, DeleteView
@@ -19,7 +20,6 @@ from django.utils import timezone
 def has_dashboard_access(user):
     return user.is_authenticated and (
         user.is_superuser
-        or user.is_staff
         or user.role in {User.Role.ADMIN, User.Role.EXAMINER}
     )
 
@@ -38,7 +38,7 @@ admin_required = user_passes_test(is_admin_user, login_url='login')
 
 
 def manageable_exams_for(user):
-    if user.is_superuser or user.is_staff or user.role == User.Role.ADMIN:
+    if user.is_superuser:
         return Exam.objects.all()
     return Exam.objects.filter(created_by=user)
 
@@ -47,26 +47,47 @@ def get_manageable_exam_or_404(user, **filters):
     return get_object_or_404(manageable_exams_for(user), **filters)
 
 
+def analytics_exams_for(user):
+    if user.is_superuser or user.role == User.Role.ADMIN:
+        return Exam.objects.all()
+    return manageable_exams_for(user)
+
+
 @login_required
 @dashboard_access_required
 def dashboard_home(request):
     manageable_exams = manageable_exams_for(request.user)
-    attempts = ExamAttempt.objects.filter(exam__in=manageable_exams)
+    analytics_exams = analytics_exams_for(request.user)
+    attempts = ExamAttempt.objects.filter(exam__in=analytics_exams)
     total_users = User.objects.count()
-    active_exams = manageable_exams.filter(is_active=True).count()
+    active_exams = analytics_exams.filter(is_active=True).count()
     attempts_today = attempts.filter(started_at__date=timezone.now().date()).count()
     completed_attempts = attempts.filter(status='SUBMITTED')
     total_completed = completed_attempts.count()
     pass_rate = 0
     if total_completed > 0:
         pass_rate = (completed_attempts.filter(is_passed=True).count() / total_completed) * 100
-        
+
+    exams_by_visibility = {
+        'public': analytics_exams.filter(visibility='PUBLIC').count(),
+        'private': analytics_exams.filter(visibility='PRIVATE').count(),
+    }
+    exams_by_type = list(
+        analytics_exams.values('exam_type').annotate(total=Count('id')).order_by('exam_type')
+    )
+    recent_exams = manageable_exams.order_by('-created_at')[:5]
+
     return render(request, 'dashboard/home.html', {
         'total_users': total_users,
         'active_exams': active_exams,
         'attempts_today': attempts_today,
         'pass_rate': pass_rate,
-        'recent_attempts': attempts.order_by('-started_at')[:5]
+        'recent_attempts': attempts.order_by('-started_at')[:5],
+        'recent_exams': recent_exams,
+        'managed_exam_count': analytics_exams.count() if (request.user.is_superuser or request.user.role == User.Role.ADMIN) else manageable_exams.count(),
+        'exams_by_visibility': exams_by_visibility,
+        'exams_by_type': exams_by_type,
+        'is_global_analytics': request.user.is_superuser or request.user.role == User.Role.ADMIN,
     })
 
 @login_required
@@ -119,11 +140,16 @@ class ExamCreateView(CreateView):
     model = Exam
     form_class = ExamForm
     template_name = 'dashboard/exam_form.html'
-    success_url = reverse_lazy('dashboard_exams')
-
     def form_valid(self, form):
+        if self.request.user.role == User.Role.EXAMINER and not self.request.user.can_manage_paid_exams:
+            form.add_error(None, "Your demo examiner payment must be completed before creating exams.")
+            return self.form_invalid(form)
         form.instance.created_by = self.request.user
         return super().form_valid(form)
+
+    def get_success_url(self):
+        messages.success(self.request, "Exam created. Add questions to make it ready for students.")
+        return reverse_lazy('dashboard_questions', kwargs={'exam_id': self.object.pk})
 
 
 @method_decorator([login_required, dashboard_access_required], name='dispatch')
@@ -135,6 +161,10 @@ class ExamUpdateView(UpdateView):
 
     def get_queryset(self):
         return manageable_exams_for(self.request.user)
+
+    def get_success_url(self):
+        messages.success(self.request, "Exam updated.")
+        return reverse_lazy('dashboard_questions', kwargs={'exam_id': self.object.pk})
 
 
 @method_decorator([login_required, dashboard_access_required], name='dispatch')
@@ -183,7 +213,9 @@ class QuestionCreateView(CreateView):
 
     def get_initial(self):
         initial = super().get_initial()
-        initial['exam'] = get_manageable_exam_or_404(self.request.user, pk=self.kwargs['exam_id'])
+        exam = get_manageable_exam_or_404(self.request.user, pk=self.kwargs['exam_id'])
+        initial['exam'] = exam
+        initial['order'] = (exam.questions.order_by('-order').values_list('order', flat=True).first() or 0) + 1
         return initial
 
     def get_context_data(self, **kwargs):
@@ -192,6 +224,10 @@ class QuestionCreateView(CreateView):
         return context
 
     def get_success_url(self):
+        if self.request.POST.get('save_add_another'):
+            messages.success(self.request, "Question saved. Add the next question.")
+            return reverse_lazy('dashboard_question_create', kwargs={'exam_id': self.object.exam_id})
+        messages.success(self.request, "Question saved.")
         return reverse_lazy('dashboard_questions', kwargs={'exam_id': self.object.exam_id})
 
 

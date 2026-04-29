@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block title %}Join Private Exam | ExamFlow{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card shadow-sm p-4">
+            <h3 class="mb-3">Join a Private Exam</h3>
+            <p class="text-muted">Enter the exam code shared by the examiner. If the exam is private, enter its access code as well.</p>
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Exam Code</label>
+                    <input type="text" name="exam_code" class="form-control" placeholder="EXM-ABC123" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Private Access Code</label>
+                    <input type="text" name="access_code" class="form-control" placeholder="Only needed for private exams">
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'exam_list' %}" class="btn btn-outline-secondary">Back</a>
+                    <button type="submit" class="btn btn-primary">Unlock Exam</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

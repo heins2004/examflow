@@ -19,7 +19,7 @@
             <p class="text-muted small mb-3">{{ user.email }}</p>
             <span class="badge bg-secondary mb-3">{{ user.get_role_display }}</span>
             <a href="{% url 'profile_edit' %}" class="btn btn-outline-primary btn-sm w-100">Edit Profile</a>
-            {% if user.is_staff or user.role == 'ADMIN' or user.role == 'EXAMINER' %}
+            {% if user.role == 'ADMIN' or user.role == 'EXAMINER' %}
             <a href="{% url 'dashboard_home' %}" class="btn btn-primary btn-sm w-100 mt-2">Open Dashboard</a>
             {% endif %}
         </div>
@@ -34,6 +34,14 @@
                 <li><i class="fas fa-venus-mars me-2"></i> {{ user.get_gender_display|default:"Not provided" }}</li>
             </ul>
         </div>
+        {% if user.role == 'EXAMINER' %}
+        <div class="card shadow-sm mt-4 p-3">
+            <h6 class="border-bottom pb-2 mb-3">Examiner Payment</h6>
+            <p class="small mb-2">Status: <span class="badge bg-success">{{ user.get_examiner_payment_status_display }}</span></p>
+            <p class="small mb-1">Amount: ₹{{ user.examiner_payment_amount }}</p>
+            <p class="small text-muted mb-0">Reference: {{ user.examiner_payment_reference }}</p>
+        </div>
+        {% endif %}
     </div>
 
     <div class="col-md-8">

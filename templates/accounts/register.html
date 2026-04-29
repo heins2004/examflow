@@ -8,9 +8,15 @@
     <div class="col-md-6">
         <div class="card p-4 shadow-sm mt-5">
             <h3 class="text-center mb-4">Create an Account</h3>
+            <div class="alert alert-light border mb-4">
+                <strong>Choose your module:</strong> students take exams and download certificates, examiners create paid exam sessions, and admins review platform analytics.
+            </div>
             <form method="post">
                 {% csrf_token %}
                 {{ form|crispy }}
+                <div class="small text-muted mt-2">
+                    Examiner accounts use a demo payment of ₹499 so you can test the paid registration flow without real transactions.
+                </div>
                 <div class="text-center mt-4">
                     <button type="submit" class="btn btn-accent px-5 w-100">Register</button>
                 </div>

@@ -6,6 +6,9 @@
 {% block content %}
 <div class="card shadow-sm">
     <div class="card-body">
+        <div class="alert alert-light border mb-4">
+            Public exams appear in the marketplace. Private exams require an access code, and the optional pass key is what students use to unlock the attempt before starting.
+        </div>
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
             {{ form|crispy }}

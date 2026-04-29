@@ -36,6 +36,11 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'exam_list' %}">Exams</a>
                     </li>
+                    {% if user.is_authenticated %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'exam_join' %}">Join Private Exam</a>
+                    </li>
+                    {% endif %}
                 </ul>
                 <div class="d-flex align-items-center gap-3">
                     <button id="darkModeToggle" class="btn btn-sm btn-outline-secondary"><i
@@ -43,12 +48,12 @@
                     {% if user.is_authenticated %}
                     <div class="dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                            {{ user.username }}
+                            {{ user.username }} <span class="badge bg-secondary ms-1">{{ user.get_role_display }}</span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="{% url 'profile' %}">Profile</a></li>
                             <li><a class="dropdown-item" href="{% url 'exam_history' %}">Exam History</a></li>
-                            {% if user.is_staff or user.role == 'ADMIN' or user.role == 'EXAMINER' %}
+                            {% if user.role == 'ADMIN' or user.role == 'EXAMINER' %}
                             <li><a class="dropdown-item" href="{% url 'dashboard_home' %}">Dashboard</a></li>
                             {% endif %}
                             <li>

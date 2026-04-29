@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-from django.utils.text import slugify
+from django.utils.crypto import get_random_string
 
 class Category(models.Model):
     name = models.CharField(max_length=100)
@@ -13,6 +13,10 @@ class Category(models.Model):
         return self.name
 
 class Exam(models.Model):
+    VISIBILITY_CHOICES = (
+        ('PUBLIC', 'Public'),
+        ('PRIVATE', 'Private'),
+    )
     EXAM_TYPE_CHOICES = (
         ('PRACTICE', 'Practice'),
         ('MOCK', 'Mock'),
@@ -33,6 +37,10 @@ class Exam(models.Model):
     show_result_immediately = models.BooleanField(default=True)
     max_attempts = models.PositiveIntegerField(default=1)
     is_active = models.BooleanField(default=True)
+    visibility = models.CharField(max_length=20, choices=VISIBILITY_CHOICES, default='PUBLIC')
+    exam_code = models.CharField(max_length=20, unique=True, blank=True, null=True)
+    access_code = models.CharField(max_length=20, blank=True, null=True)
+    pass_key = models.CharField(max_length=20, blank=True, null=True)
     start_time = models.DateTimeField(null=True, blank=True)
     end_time = models.DateTimeField(null=True, blank=True)
     thumbnail = models.ImageField(upload_to='exam_thumbnails/', null=True, blank=True)
@@ -43,6 +51,25 @@ class Exam(models.Model):
 
     def __str__(self):
         return self.title
+
+    def save(self, *args, **kwargs):
+        if not self.exam_code:
+            self.exam_code = self._generate_unique_code('EXM')
+        super().save(*args, **kwargs)
+
+    def _generate_unique_code(self, prefix):
+        while True:
+            code = f"{prefix}-{get_random_string(6).upper()}"
+            if not Exam.objects.filter(exam_code=code).exists():
+                return code
+
+    @property
+    def requires_access_code(self):
+        return self.visibility == 'PRIVATE' and bool(self.access_code)
+
+    @property
+    def requires_pass_key(self):
+        return bool(self.pass_key)
 
 class Question(models.Model):
     QUESTION_TYPE_CHOICES = (
@@ -94,6 +121,18 @@ class ExamAttempt(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.exam.title} - {self.started_at}"
+
+
+class ExamAccess(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='exam_accesses')
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='accesses')
+    granted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'exam')
+
+    def __str__(self):
+        return f"{self.user.username} -> {self.exam.exam_code}"
 
 class UserAnswer(models.Model):
     attempt = models.ForeignKey(ExamAttempt, on_delete=models.CASCADE, related_name='user_answers')

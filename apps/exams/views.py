@@ -4,11 +4,36 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
 from django.contrib import messages
-from .models import Exam, Category, ExamAttempt, Question, Option, UserAnswer
+from apps.accounts.models import User
+from .models import Exam, Category, ExamAccess, ExamAttempt, Question, Option, UserAnswer
 from django.db.models import Count
 
+
+def can_view_exam(user, exam):
+    if exam.visibility == 'PUBLIC':
+        return True
+    if not user.is_authenticated:
+        return False
+    if user == exam.created_by or user.role == User.Role.ADMIN or user.is_superuser:
+        return True
+    return ExamAccess.objects.filter(user=user, exam=exam).exists()
+
+
+def is_exam_available_now(exam):
+    now = timezone.now()
+    if exam.start_time and now < exam.start_time:
+        return False, "This exam has not opened yet."
+    if exam.end_time and now > exam.end_time:
+        return False, "This exam is closed."
+    return True, ""
+
+
+def has_unlocked_pass_key(request, exam):
+    return request.session.get(f"exam-passkey-{exam.id}") is True or not exam.requires_pass_key
+
+
 def exam_list(request):
-    exams = Exam.objects.filter(is_active=True).order_by('-created_at')
+    exams = Exam.objects.filter(is_active=True, visibility='PUBLIC').order_by('-created_at')
     categories = Category.objects.all()
     
     cat_slug = request.GET.get('category')
@@ -26,8 +51,45 @@ def exam_list(request):
         'search_query': q
     })
 
+@login_required
+def exam_join_by_code(request):
+    joined_exam = None
+    if request.method == 'POST':
+        exam_code = (request.POST.get('exam_code') or '').strip().upper()
+        access_code = (request.POST.get('access_code') or '').strip().upper()
+
+        exam = Exam.objects.filter(exam_code=exam_code, is_active=True).first()
+        if not exam:
+            messages.error(request, "No exam was found for that exam code.")
+        elif exam.visibility == 'PRIVATE' and exam.access_code and exam.access_code != access_code:
+            messages.error(request, "That private exam code is invalid.")
+        else:
+            ExamAccess.objects.get_or_create(user=request.user, exam=exam)
+            joined_exam = exam
+            messages.success(request, f"You can now access {exam.title}.")
+            return redirect('exam_detail', slug=exam.slug)
+
+    return render(request, 'exams/exam_join.html', {'joined_exam': joined_exam})
+
 def exam_detail(request, slug):
     exam = get_object_or_404(Exam, slug=slug, is_active=True)
+    if not can_view_exam(request.user, exam):
+        messages.warning(request, "This is a private exam. Enter its exam code first.")
+        return redirect('exam_join')
+
+    pass_key_unlocked = has_unlocked_pass_key(request, exam)
+    availability_ok, availability_message = is_exam_available_now(exam)
+
+    if request.method == 'POST' and request.user.is_authenticated:
+        entered_pass_key = (request.POST.get('pass_key') or '').strip().upper()
+        if exam.requires_pass_key:
+            if entered_pass_key == (exam.pass_key or '').upper():
+                request.session[f"exam-passkey-{exam.id}"] = True
+                pass_key_unlocked = True
+                messages.success(request, "Pass key accepted. You can start the exam now.")
+            else:
+                messages.error(request, "The pass key is incorrect.")
+
     user_attempts = 0
     completed_attempts = 0
     in_progress_attempt = None
@@ -44,11 +106,31 @@ def exam_detail(request, slug):
         'in_progress_attempt': in_progress_attempt,
         'can_attempt': completed_attempts < exam.max_attempts if exam.max_attempts > 0 else True,
         'has_questions': exam.questions.exists(),
+        'pass_key_unlocked': pass_key_unlocked,
+        'availability_ok': availability_ok,
+        'availability_message': availability_message,
     })
 
 @login_required
 def exam_start(request, slug):
     exam = get_object_or_404(Exam, slug=slug, is_active=True)
+    if request.user.role != User.Role.STUDENT:
+        messages.error(request, "Only student accounts can take exams.")
+        return redirect('exam_detail', slug=slug)
+
+    if not can_view_exam(request.user, exam):
+        messages.error(request, "You do not have access to this exam.")
+        return redirect('exam_join')
+
+    if exam.requires_pass_key and not has_unlocked_pass_key(request, exam):
+        messages.error(request, "Enter the exam pass key before starting.")
+        return redirect('exam_detail', slug=slug)
+
+    availability_ok, availability_message = is_exam_available_now(exam)
+    if not availability_ok:
+        messages.error(request, availability_message)
+        return redirect('exam_detail', slug=slug)
+
     in_progress = ExamAttempt.objects.filter(user=request.user, exam=exam, status='IN_PROGRESS').first()
     if in_progress:
         return redirect('exam_attempt', slug=slug, id=in_progress.id)
