@@ -4,29 +4,26 @@
 {% block title %}Register | ExamFlow{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card p-4 shadow-sm mt-5">
-            <h3 class="text-center mb-4">Create an Account</h3>
-            <div class="alert alert-light border mb-4">
-                <strong>Choose your module:</strong> students take exams and download certificates, examiners create paid exam sessions, and admins review platform analytics.
+<section class="auth-shell">
+    <div class="card auth-card auth-card-wide glass-card">
+        <span class="section-label mb-3"><i class="fas fa-user-plus"></i> Create account</span>
+        <h1 class="auth-heading">Start with the right role</h1>
+        <p class="auth-subtitle">Students take exams and download certificates. Examiners create paid sessions. Admins manage the wider platform.</p>
+        <div class="info-banner mb-4">
+            Examiner accounts use a demo payment of Rs. 499 so the paid registration flow can be tested without real transactions.
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            {{ form|crispy }}
+            <div class="text-center mt-4">
+                <button type="submit" class="btn btn-accent px-5 w-100">Create account</button>
             </div>
-            <form method="post">
-                {% csrf_token %}
-                {{ form|crispy }}
-                <div class="small text-muted mt-2">
-                    Examiner accounts use a demo payment of ₹499 so you can test the paid registration flow without real transactions.
-                </div>
-                <div class="text-center mt-4">
-                    <button type="submit" class="btn btn-accent px-5 w-100">Register</button>
-                </div>
-            </form>
-            <hr class="my-4">
-            <div class="text-center">
-                <span class="text-muted">Already have an account?</span>
-                <a href="{% url 'login' %}" class="fw-bold text-decoration-none">Login here</a>
-            </div>
+        </form>
+        <hr class="my-4">
+        <div class="text-center">
+            <span class="text-muted">Already have an account?</span>
+            <a href="{% url 'login' %}" class="fw-bold text-decoration-none">Login here</a>
         </div>
     </div>
-</div>
+</section>
 {% endblock %}

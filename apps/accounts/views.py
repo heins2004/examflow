@@ -3,11 +3,17 @@ from django.contrib.auth import login, authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .forms import CustomUserCreationForm, CustomAuthenticationForm, UserProfileForm
+from .models import User
 from apps.exams.models import ExamAttempt, Exam
 
 def home(request):
     featured_exams = Exam.objects.filter(is_active=True).order_by('-created_at')[:3]
-    return render(request, 'accounts/home.html', {'exams': featured_exams})
+    stats = {
+        'active_exams': Exam.objects.filter(is_active=True).count(),
+        'student_count': User.objects.filter(role=User.Role.STUDENT).count(),
+        'completed_attempts': ExamAttempt.objects.filter(status='SUBMITTED').count(),
+    }
+    return render(request, 'accounts/home.html', {'exams': featured_exams, 'stats': stats})
 
 def register(request):
     if request.user.is_authenticated:

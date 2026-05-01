@@ -3,143 +3,137 @@
 {% block title %}{{ exam.title }} | ExamFlow{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-8">
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{% url 'exam_list' %}">Exams</a></li>
-                <li class="breadcrumb-item active" aria-current="page">{{ exam.title }}</li>
-            </ol>
-        </nav>
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'exam_list' %}">Exams</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ exam.title }}</li>
+    </ol>
+</nav>
 
-        <div class="card shadow-sm border-0 mb-4 overflow-hidden">
-            {% if exam.thumbnail %}
-            <img src="{{ exam.thumbnail.url }}" class="card-img-top" style="height: 250px; object-fit: cover;"
-                alt="{{ exam.title }}">
-            {% else %}
-            <div class="bg-primary pt-5 pb-4 px-4 text-white">
-                <span class="badge bg-light text-primary mb-2">{{ exam.category.name }}</span>
-                <h2 class="mb-0 text-white">{{ exam.title }}</h2>
-            </div>
+<div class="detail-shell">
+    <section class="card detail-main">
+        {% if exam.thumbnail %}
+        <img src="{{ exam.thumbnail.url }}" class="card-img-top rounded-4 mb-4" style="height: 280px; object-fit: cover;" alt="{{ exam.title }}">
+        {% else %}
+        <div class="detail-hero-fallback rounded-4 p-4 mb-4">
+            <span class="badge bg-light text-primary mb-2">{{ exam.category.name }}</span>
+            <h1 class="text-white mb-2">{{ exam.title }}</h1>
+            <p class="text-white-50 mb-0">Review the details below before starting your attempt.</p>
+        </div>
+        {% endif %}
+
+        {% if exam.thumbnail %}
+        <span class="badge bg-primary mb-2">{{ exam.category.name }}</span>
+        <h1 class="mb-3">{{ exam.title }}</h1>
+        {% endif %}
+
+        <p class="lead text-muted mb-4">{{ exam.description }}</p>
+
+        <div class="d-flex flex-wrap gap-2 mb-4">
+            <span class="badge {% if exam.visibility == 'PUBLIC' %}bg-success{% else %}bg-dark{% endif %}">{{ exam.get_visibility_display }}</span>
+            <span class="badge bg-secondary">Exam code: {{ exam.exam_code }}</span>
+            {% if exam.requires_pass_key %}
+            <span class="badge bg-warning text-dark">Pass key required</span>
             {% endif %}
+            {% if exam.requires_access_code %}
+            <span class="badge bg-info text-dark">Private access code required</span>
+            {% endif %}
+        </div>
 
-            <div class="card-body p-4 p-md-5">
-                {% if exam.thumbnail %}
-                <span class="badge bg-primary mb-2">{{ exam.category.name }}</span>
-                <h2 class="mb-3">{{ exam.title }}</h2>
-                {% endif %}
-
-                <p class="lead text-muted">{{ exam.description }}</p>
-                <div class="d-flex flex-wrap gap-2 mb-3">
-                    <span class="badge {% if exam.visibility == 'PUBLIC' %}bg-success{% else %}bg-dark{% endif %}">{{ exam.get_visibility_display }}</span>
-                    <span class="badge bg-secondary">Exam code: {{ exam.exam_code }}</span>
-                    {% if exam.requires_pass_key %}
-                    <span class="badge bg-warning text-dark">Pass key required</span>
-                    {% endif %}
-                    {% if exam.requires_access_code %}
-                    <span class="badge bg-info text-dark">Private access code required</span>
-                    {% endif %}
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-lg-3">
+                <div class="stat-tile text-center h-100">
+                    <i class="fas fa-clock fa-lg text-primary mb-2"></i>
+                    <h5 class="mb-1">{{ exam.duration_minutes }}</h5>
+                    <small class="text-muted">Minutes</small>
                 </div>
-
-                <div class="row g-3 my-4">
-                    <div class="col-6 col-sm-3">
-                        <div class="border rounded p-3 text-center bg-light">
-                            <i class="fas fa-clock fa-2x text-primary mb-2"></i>
-                            <h5 class="mb-0">{{ exam.duration_minutes }}</h5>
-                            <small class="text-muted">Minutes</small>
-                        </div>
-                    </div>
-                    <div class="col-6 col-sm-3">
-                        <div class="border rounded p-3 text-center bg-light">
-                            <i class="fas fa-list-ol fa-2x text-accent mb-2"></i>
-                            <h5 class="mb-0">{{ exam.questions.count }}</h5>
-                            <small class="text-muted">Questions</small>
-                        </div>
-                    </div>
-                    <div class="col-6 col-sm-3">
-                        <div class="border rounded p-3 text-center bg-light">
-                            <i class="fas fa-star fa-2x text-warning mb-2"></i>
-                            <h5 class="mb-0">{{ exam.total_marks }}</h5>
-                            <small class="text-muted">Total Marks</small>
-                        </div>
-                    </div>
-                    <div class="col-6 col-sm-3">
-                        <div class="border rounded p-3 text-center bg-light">
-                            <i class="fas fa-flag-checkered fa-2x text-success mb-2"></i>
-                            <h5 class="mb-0">{{ exam.pass_marks }}</h5>
-                            <small class="text-muted">Passing</small>
-                        </div>
-                    </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="stat-tile text-center h-100">
+                    <i class="fas fa-list-ol fa-lg text-accent mb-2"></i>
+                    <h5 class="mb-1">{{ exam.questions.count }}</h5>
+                    <small class="text-muted">Questions</small>
                 </div>
-
-                {% if exam.instructions %}
-                <div class="mt-4 mb-5">
-                    <h5 class="border-bottom pb-2">Instructions</h5>
-                    <div class="text-muted">{{ exam.instructions|linebreaks }}</div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="stat-tile text-center h-100">
+                    <i class="fas fa-star fa-lg text-warning mb-2"></i>
+                    <h5 class="mb-1">{{ exam.total_marks }}</h5>
+                    <small class="text-muted">Total marks</small>
                 </div>
-                {% endif %}
-                {% if exam.requires_pass_key and user.is_authenticated and not pass_key_unlocked %}
-                <div class="alert alert-warning">
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-                        <div>
-                            <strong>Exam pass key required.</strong>
-                            <div class="small">The examiner must share this key with the student before the attempt begins.</div>
-                        </div>
-                        <form method="post" class="d-flex gap-2 flex-wrap">
-                            {% csrf_token %}
-                            <input type="text" name="pass_key" class="form-control" placeholder="Enter pass key" style="max-width: 220px;" required>
-                            <button type="submit" class="btn btn-warning">Unlock</button>
-                        </form>
-                    </div>
-                </div>
-                {% elif exam.requires_pass_key and pass_key_unlocked %}
-                <div class="alert alert-success">Pass key verified for this session.</div>
-                {% endif %}
-                {% if not availability_ok %}
-                <div class="alert alert-secondary">{{ availability_message }}</div>
-                {% endif %}
-
-                <div
-                    class="bg-light p-4 rounded-3 d-flex flex-column flex-md-row justify-content-between align-items-center">
-                    <div class="mb-3 mb-md-0">
-                        <span class="d-block fw-bold text-dark mb-1">
-                            Your Attempts: {{ user_attempts }} /
-                            {% if exam.max_attempts > 0 %}
-                            {{ exam.max_attempts }}
-                            {% else %}
-                            Unlimited
-                            {% endif %}
-                        </span>
-                        <a href="{% url 'exam_leaderboard' slug=exam.slug %}" class="small"><i
-                                class="fas fa-trophy text-warning"></i> View Leaderboard</a>
-                    </div>
-
-                    {% if user.is_authenticated %}
-                    {% if in_progress_attempt %}
-                    <a href="{% url 'exam_attempt' slug=exam.slug id=in_progress_attempt.id %}" class="btn btn-accent btn-lg px-5 shadow-sm">
-                        Resume Exam
-                    </a>
-                    {% elif user.role != 'STUDENT' %}
-                    <button class="btn btn-secondary btn-lg px-5 disabled">Only Students Can Attempt</button>
-                    {% elif not has_questions %}
-                    <button class="btn btn-secondary btn-lg px-5 disabled">No Questions Added Yet</button>
-                    {% elif not availability_ok %}
-                    <button class="btn btn-secondary btn-lg px-5 disabled">Unavailable Right Now</button>
-                    {% elif exam.requires_pass_key and not pass_key_unlocked %}
-                    <button class="btn btn-secondary btn-lg px-5 disabled">Unlock With Pass Key</button>
-                    {% elif can_attempt %}
-                    <a href="{% url 'exam_start' slug=exam.slug %}" class="btn btn-accent btn-lg px-5 shadow-sm">Start
-                        Exam Now</a>
-                    {% else %}
-                    <button class="btn btn-secondary btn-lg px-5 disabled">Max Attempts Reached</button>
-                    {% endif %}
-                    {% else %}
-                    <a href="{% url 'login' %}?next={{ request.path }}" class="btn btn-primary btn-lg px-5">Login to
-                        Start</a>
-                    {% endif %}
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="stat-tile text-center h-100">
+                    <i class="fas fa-flag-checkered fa-lg text-success mb-2"></i>
+                    <h5 class="mb-1">{{ exam.pass_marks }}</h5>
+                    <small class="text-muted">Pass marks</small>
                 </div>
             </div>
         </div>
-    </div>
+
+        {% if exam.instructions %}
+        <div class="info-banner mb-4">
+            <h5 class="mb-3">Instructions</h5>
+            <div class="text-muted">{{ exam.instructions|linebreaks }}</div>
+        </div>
+        {% endif %}
+
+        {% if exam.requires_pass_key and user.is_authenticated and not pass_key_unlocked %}
+        <div class="alert alert-warning">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div>
+                    <strong>Exam pass key required.</strong>
+                    <div class="small">The examiner must share this key before the attempt begins.</div>
+                </div>
+                <form method="post" class="d-flex gap-2 flex-wrap">
+                    {% csrf_token %}
+                    <input type="text" name="pass_key" class="form-control" placeholder="Enter pass key" style="max-width: 220px;" required>
+                    <button type="submit" class="btn btn-warning">Unlock</button>
+                </form>
+            </div>
+        </div>
+        {% elif exam.requires_pass_key and pass_key_unlocked %}
+        <div class="alert alert-success">Pass key verified for this session.</div>
+        {% endif %}
+
+        {% if not availability_ok %}
+        <div class="alert alert-secondary">{{ availability_message }}</div>
+        {% endif %}
+    </section>
+
+    <aside class="card detail-side glass-card">
+        <span class="section-label mb-3"><i class="fas fa-play"></i> Ready to begin</span>
+        <div class="info-banner mb-4">
+            <div class="fw-semibold text-dark mb-2">Attempt summary</div>
+            <div class="small text-muted d-grid gap-2">
+                <div>Your attempts: {{ user_attempts }} / {% if exam.max_attempts > 0 %}{{ exam.max_attempts }}{% else %}Unlimited{% endif %}</div>
+                <div>Questions available: {% if has_questions %}Yes{% else %}No{% endif %}</div>
+                <div>Access window: {% if availability_ok %}Open{% else %}Unavailable{% endif %}</div>
+            </div>
+        </div>
+
+        <div class="d-grid gap-3">
+            {% if user.is_authenticated %}
+                {% if in_progress_attempt %}
+                <a href="{% url 'exam_attempt' slug=exam.slug id=in_progress_attempt.id %}" class="btn btn-accent btn-lg shadow-sm">Resume exam</a>
+                {% elif user.role != 'STUDENT' %}
+                <button class="btn btn-secondary btn-lg disabled">Only students can attempt</button>
+                {% elif not has_questions %}
+                <button class="btn btn-secondary btn-lg disabled">No questions added yet</button>
+                {% elif not availability_ok %}
+                <button class="btn btn-secondary btn-lg disabled">Unavailable right now</button>
+                {% elif exam.requires_pass_key and not pass_key_unlocked %}
+                <button class="btn btn-secondary btn-lg disabled">Unlock with pass key</button>
+                {% elif can_attempt %}
+                <a href="{% url 'exam_start' slug=exam.slug %}" class="btn btn-accent btn-lg shadow-sm">Start exam now</a>
+                {% else %}
+                <button class="btn btn-secondary btn-lg disabled">Max attempts reached</button>
+                {% endif %}
+            {% else %}
+            <a href="{% url 'login' %}?next={{ request.path }}" class="btn btn-primary btn-lg">Login to start</a>
+            {% endif %}
+            <a href="{% url 'exam_leaderboard' slug=exam.slug %}" class="btn btn-outline-primary">View leaderboard</a>
+        </div>
+    </aside>
 </div>
 {% endblock %}

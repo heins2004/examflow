@@ -3,78 +3,87 @@
 {% block title %}Profile | ExamFlow{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-4 mb-4">
-        <div class="card shadow-sm text-center p-4">
+<section class="mb-4">
+    <span class="section-label mb-3"><i class="fas fa-user"></i> Your profile</span>
+    <h1 class="mb-2">A cleaner view of your exam activity</h1>
+    <p class="text-muted mb-0">Profile details, performance, and recent attempts are grouped into one easier-to-scan workspace.</p>
+</section>
+
+<div class="profile-shell">
+    <aside class="card profile-card glass-card">
+        <div class="text-center mb-4">
             {% if user.profile_picture %}
-            <img src="{{ user.profile_picture.url }}" alt="Profile Picture" class="rounded-circle mb-3 mx-auto"
-                style="width: 120px; height: 120px; object-fit: cover;">
+            <img src="{{ user.profile_picture.url }}" alt="Profile Picture" class="profile-avatar mb-3">
             {% else %}
-            <div class="bg-primary text-white rounded-circle mb-3 mx-auto d-flex align-items-center justify-content-center"
-                style="width: 120px; height: 120px; font-size: 3rem;">
+            <div class="profile-avatar-fallback mx-auto mb-3">
                 {{ user.username.0|upper }}
             </div>
             {% endif %}
             <h4 class="mb-1">{{ user.get_full_name|default:user.username }}</h4>
             <p class="text-muted small mb-3">{{ user.email }}</p>
             <span class="badge bg-secondary mb-3">{{ user.get_role_display }}</span>
-            <a href="{% url 'profile_edit' %}" class="btn btn-outline-primary btn-sm w-100">Edit Profile</a>
-            {% if user.role == 'ADMIN' or user.role == 'EXAMINER' %}
-            <a href="{% url 'dashboard_home' %}" class="btn btn-primary btn-sm w-100 mt-2">Open Dashboard</a>
-            {% endif %}
+            <div class="d-grid gap-2">
+                <a href="{% url 'profile_edit' %}" class="btn btn-outline-primary btn-sm w-100">Edit profile</a>
+                {% if user.role == 'ADMIN' or user.role == 'EXAMINER' %}
+                <a href="{% url 'dashboard_home' %}" class="btn btn-primary btn-sm w-100">Open dashboard</a>
+                {% endif %}
+            </div>
         </div>
 
-        <div class="card shadow-sm mt-4 p-3">
-            <h6 class="border-bottom pb-2 mb-3">About Me</h6>
-            <p class="small text-muted">{{ user.bio|default:"No bio provided." }}</p>
-            <ul class="list-unstyled small text-muted mb-0">
-                <li class="mb-1"><i class="fas fa-phone me-2"></i> {{ user.phone|default:"Not provided" }}</li>
-                <li class="mb-1"><i class="fas fa-birthday-cake me-2"></i> {{ user.date_of_birth|default:"Not provided"
-                    }}</li>
-                <li><i class="fas fa-venus-mars me-2"></i> {{ user.get_gender_display|default:"Not provided" }}</li>
-            </ul>
+        <div class="info-banner mb-3">
+            <div class="fw-semibold text-dark mb-2">About</div>
+            <p class="small mb-3">{{ user.bio|default:"No bio provided." }}</p>
+            <div class="small text-muted d-grid gap-2">
+                <div><i class="fas fa-phone me-2"></i>{{ user.phone|default:"Not provided" }}</div>
+                <div><i class="fas fa-birthday-cake me-2"></i>{{ user.date_of_birth|default:"Not provided" }}</div>
+                <div><i class="fas fa-venus-mars me-2"></i>{{ user.get_gender_display|default:"Not provided" }}</div>
+            </div>
         </div>
+
         {% if user.role == 'EXAMINER' %}
-        <div class="card shadow-sm mt-4 p-3">
-            <h6 class="border-bottom pb-2 mb-3">Examiner Payment</h6>
+        <div class="info-banner">
+            <div class="fw-semibold text-dark mb-2">Examiner payment</div>
             <p class="small mb-2">Status: <span class="badge bg-success">{{ user.get_examiner_payment_status_display }}</span></p>
-            <p class="small mb-1">Amount: ₹{{ user.examiner_payment_amount }}</p>
-            <p class="small text-muted mb-0">Reference: {{ user.examiner_payment_reference }}</p>
+            <p class="small mb-1">Amount: Rs. {{ user.examiner_payment_amount }}</p>
+            <p class="small mb-0">Reference: {{ user.examiner_payment_reference }}</p>
         </div>
         {% endif %}
-    </div>
+    </aside>
 
-    <div class="col-md-8">
-        <div class="row mb-4">
+    <section class="profile-panel">
+        <div class="row g-3 mb-4">
             <div class="col-md-4">
-                <div class="card bg-primary text-white text-center p-3 shadow-sm h-100">
-                    <h2 class="mb-0">{{ total_exams }}</h2>
-                    <span class="small opacity-75">Exams Taken</span>
+                <div class="profile-stat" style="background: linear-gradient(135deg, var(--primary-color), #2b628d);">
+                    <h2>{{ total_exams }}</h2>
+                    <span class="small opacity-75">Exams taken</span>
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="card bg-accent text-white text-center p-3 shadow-sm h-100">
-                    <h2 class="mb-0">{{ avg_score|floatformat:1 }}%</h2>
-                    <span class="small opacity-75">Average Score</span>
+                <div class="profile-stat" style="background: linear-gradient(135deg, var(--accent-color), #ff9f6f);">
+                    <h2>{{ avg_score|floatformat:1 }}%</h2>
+                    <span class="small opacity-75">Average score</span>
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="card bg-success text-white text-center p-3 shadow-sm h-100">
-                    <h2 class="mb-0">{{ pass_rate|floatformat:0 }}%</h2>
-                    <span class="small opacity-75">Pass Rate</span>
+                <div class="profile-stat" style="background: linear-gradient(135deg, var(--success-color), #6ed0aa);">
+                    <h2>{{ pass_rate|floatformat:0 }}%</h2>
+                    <span class="small opacity-75">Pass rate</span>
                 </div>
             </div>
         </div>
 
-        <div class="card shadow-sm p-4">
-            <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
-                <h5 class="mb-0">Recent Activity</h5>
-                <a href="{% url 'exam_history' %}" class="small text-decoration-none">View All</a>
+        <div class="card profile-panel">
+            <div class="panel-title">
+                <div>
+                    <h5 class="mb-1">Recent activity</h5>
+                    <div class="text-muted small">Your latest attempts and current status.</div>
+                </div>
+                <a href="{% url 'exam_history' %}" class="small text-decoration-none">View all</a>
             </div>
             {% if recent_attempts %}
             <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
                         <tr>
                             <th>Exam</th>
                             <th>Date</th>
@@ -92,23 +101,21 @@
                                 {% if attempt.status == 'SUBMITTED' %}
                                 <span class="badge bg-success">Completed</span>
                                 {% elif attempt.status == 'TIMED_OUT' %}
-                                <span class="badge bg-warning">Timed Out</span>
+                                <span class="badge bg-warning text-dark">Timed out</span>
                                 {% else %}
-                                <span class="badge bg-secondary">In Progress</span>
+                                <span class="badge bg-secondary">In progress</span>
                                 {% endif %}
                             </td>
-                            <td>{% if attempt.status != 'IN_PROGRESS' %}{{ attempt.percentage }}%{% else %}-{% endif %}
-                            </td>
+                            <td>{% if attempt.status != 'IN_PROGRESS' %}{{ attempt.percentage }}%{% else %}-{% endif %}</td>
                             <td>
                                 {% if attempt.status != 'IN_PROGRESS' %}
-                                {% if attempt.is_passed %}
-                                <span class="text-success fw-bold"><i class="fas fa-check-circle"></i> Pass</span>
+                                    {% if attempt.is_passed %}
+                                    <span class="text-success fw-bold"><i class="fas fa-check-circle"></i> Pass</span>
+                                    {% else %}
+                                    <span class="text-danger fw-bold"><i class="fas fa-times-circle"></i> Fail</span>
+                                    {% endif %}
                                 {% else %}
-                                <span class="text-danger fw-bold"><i class="fas fa-times-circle"></i> Fail</span>
-                                {% endif %}
-                                {% else %}
-                                <a href="{% url 'exam_attempt' slug=attempt.exam.slug id=attempt.id %}"
-                                    class="btn btn-sm btn-outline-primary">Resume</a>
+                                <a href="{% url 'exam_attempt' slug=attempt.exam.slug id=attempt.id %}" class="btn btn-sm btn-outline-primary">Resume</a>
                                 {% endif %}
                             </td>
                         </tr>
@@ -117,10 +124,9 @@
                 </table>
             </div>
             {% else %}
-            <p class="text-muted text-center py-4">No exam attempts yet. <a href="{% url 'exam_list' %}">Take an
-                    exam!</a></p>
+            <p class="text-muted text-center py-4 mb-0">No exam attempts yet. <a href="{% url 'exam_list' %}">Browse exams</a>.</p>
             {% endif %}
         </div>
-    </div>
+    </section>
 </div>
 {% endblock %}
