@@ -6,6 +6,7 @@ from django.contrib.auth.forms import UserCreationForm
 
 from apps.accounts.models import User
 from apps.exams.models import Category, Exam, Option, Question
+from .models import CategoryRequest
 
 
 class ExamForm(BootstrapFormMixin, forms.ModelForm):
@@ -117,6 +118,12 @@ class QuestionForm(BootstrapFormMixin, forms.ModelForm):
         label="Correct answer",
         help_text="Used for fill in the blank questions.",
     )
+    short_answer = forms.CharField(
+        required=False,
+        label="Expected answer",
+        widget=forms.Textarea(attrs={"rows": 4}),
+        help_text="Used for short answer questions.",
+    )
 
     class Meta:
         model = Question
@@ -130,12 +137,28 @@ class QuestionForm(BootstrapFormMixin, forms.ModelForm):
             "explanation",
             "order",
         ]
+        widgets = {
+            "question_type": forms.RadioSelect,
+        }
 
     def __init__(self, *args, exam_queryset=None, **kwargs):
         super().__init__(*args, **kwargs)
 
         if exam_queryset is not None:
             self.fields["exam"].queryset = exam_queryset
+
+        allowed_question_types = [
+            ("MCQ", "MCQ"),
+            ("TRUE_FALSE", "True or False"),
+            ("FILL_BLANK", "Fill in the Blanks"),
+            ("SHORT_ANSWER", "Short Answer"),
+        ]
+        if self.instance.pk and self.instance.question_type == "IMAGE_BASED":
+            allowed_question_types.append(("IMAGE_BASED", "Image Based"))
+        self.fields["question_type"].choices = allowed_question_types
+
+        if not self.instance.pk:
+            self.fields["question_type"].initial = None
 
         if self.instance.pk:
             options = list(self.instance.options.all())
@@ -150,6 +173,9 @@ class QuestionForm(BootstrapFormMixin, forms.ModelForm):
             elif self.instance.question_type == "FILL_BLANK":
                 correct = next((option.option_text for option in options if option.is_correct), "")
                 self.fields["fill_blank_answer"].initial = correct
+            elif self.instance.question_type == "SHORT_ANSWER":
+                correct = next((option.option_text for option in options if option.is_correct), "")
+                self.fields["short_answer"].initial = correct
 
     def clean(self):
         cleaned_data = super().clean()
@@ -181,6 +207,11 @@ class QuestionForm(BootstrapFormMixin, forms.ModelForm):
             if not answer:
                 raise forms.ValidationError("Enter the correct answer for this fill in the blank question.")
             cleaned_data["fill_blank_answer"] = answer
+        elif question_type == "SHORT_ANSWER":
+            answer = cleaned_data.get("short_answer", "").strip()
+            if not answer:
+                raise forms.ValidationError("Enter the expected answer for this short answer question.")
+            cleaned_data["short_answer"] = answer
 
         return cleaned_data
 
@@ -220,6 +251,14 @@ class QuestionForm(BootstrapFormMixin, forms.ModelForm):
                 option_text=self.cleaned_data["fill_blank_answer"],
                 is_correct=True,
             )
+            return
+
+        if question_type == "SHORT_ANSWER":
+            Option.objects.create(
+                question=question,
+                option_text=self.cleaned_data["short_answer"],
+                is_correct=True,
+            )
 
 
 class DashboardUserCreateForm(BootstrapFormMixin, UserCreationForm):
@@ -232,3 +271,9 @@ class DashboardUserUpdateForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = User
         fields = ("username", "email", "first_name", "last_name", "role", "is_active")
+
+
+class CategoryRequestForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = CategoryRequest
+        fields = ("name", "description")

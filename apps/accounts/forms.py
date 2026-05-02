@@ -11,7 +11,7 @@ class BootstrapFormMixin:
             existing_class = widget.attrs.get('class', '')
             widget_name = widget.__class__.__name__.lower()
 
-            if 'checkbox' in widget_name:
+            if 'checkbox' in widget_name or 'radio' in widget_name:
                 css_class = 'form-check-input'
             elif 'select' in widget_name:
                 css_class = 'form-select'

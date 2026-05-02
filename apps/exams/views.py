@@ -34,7 +34,7 @@ def has_unlocked_pass_key(request, exam):
 
 def exam_list(request):
     exams = Exam.objects.filter(is_active=True, visibility='PUBLIC').order_by('-created_at')
-    categories = Category.objects.all()
+    categories = Category.objects.order_by('name')
     
     cat_slug = request.GET.get('category')
     q = request.GET.get('q')
@@ -179,7 +179,7 @@ def exam_attempt(request, slug, id):
                 question = get_object_or_404(Question, id=q_id, exam=exam)
                 user_ans, created = UserAnswer.objects.get_or_create(attempt=attempt, question=question)
                 
-                if question.question_type == 'FILL_BLANK':
+                if question.question_type in {'FILL_BLANK', 'SHORT_ANSWER'}:
                     user_ans.text_answer = txt_ans
                 else:
                     if opt_id:
@@ -202,7 +202,7 @@ def exam_attempt(request, slug, id):
     saved_answers = UserAnswer.objects.filter(attempt=attempt)
     answered_map = {}
     for ans in saved_answers:
-        if ans.question.question_type == 'FILL_BLANK':
+        if ans.question.question_type in {'FILL_BLANK', 'SHORT_ANSWER'}:
             answered_map[ans.question.id] = ans.text_answer
         else:
             if ans.selected_option:
@@ -236,7 +236,7 @@ def submit_exam_logic(attempt):
         marks_obtained = 0
         is_correct = False
         
-        if q.question_type == 'FILL_BLANK':
+        if q.question_type in {'FILL_BLANK', 'SHORT_ANSWER'}:
             # Basic text match for now
             correct_opts = q.options.filter(is_correct=True)
             if correct_opts.exists() and ans.text_answer:

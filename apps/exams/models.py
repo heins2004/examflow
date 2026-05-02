@@ -76,6 +76,7 @@ class Question(models.Model):
         ('MCQ', 'Multiple Choice Question'),
         ('TRUE_FALSE', 'True/False'),
         ('FILL_BLANK', 'Fill in the Blank'),
+        ('SHORT_ANSWER', 'Short Answer'),
         ('IMAGE_BASED', 'Image Based'),
     )
     exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='questions')

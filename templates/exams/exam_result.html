@@ -104,7 +104,7 @@
                             <div class="col-md-6">
                                 <h6>Your Answer:</h6>
                                 {% if item.user_answer %}
-                                {% if item.question.question_type == 'FILL_BLANK' %}
+                                {% if item.question.question_type == 'FILL_BLANK' or item.question.question_type == 'SHORT_ANSWER' %}
                                 <div
                                     class="alert {% if item.is_correct %}alert-success{% else %}alert-danger{% endif %}">
                                     {{ item.user_answer.text_answer|default:"No Answer" }}</div>
@@ -119,7 +119,7 @@
                             </div>
                             <div class="col-md-6">
                                 <h6>Correct Answer:</h6>
-                                {% if item.question.question_type == 'FILL_BLANK' %}
+                                {% if item.question.question_type == 'FILL_BLANK' or item.question.question_type == 'SHORT_ANSWER' %}
                                 <div class="alert alert-success">
                                     {% for o in item.question.options.all %}
                                     {% if o.is_correct %}{{ o.option_text }} {% endif %}

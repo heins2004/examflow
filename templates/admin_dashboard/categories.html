@@ -1,27 +1,18 @@
-{% extends 'dashboard/base_dashboard.html' %}
+{% extends 'admin_dashboard/base_admin_dashboard.html' %}
 {% load crispy_forms_tags %}
-{% block content_title %}Category Management{% endblock %}
+{% block content_title %}Admin Categories{% endblock %}
 
 {% block content %}
 <div class="row">
     <div class="col-md-4 mb-4">
         <div class="card shadow-sm">
             <div class="card-header bg-white py-3">
-                <h6 class="m-0 fw-bold text-primary">{% if can_manage_categories %}Manage Categories{% else %}Category Access{% endif %}</h6>
+                <h6 class="m-0 fw-bold text-primary">Manage Categories</h6>
             </div>
             <div class="card-body text-center py-5">
                 <i class="fas fa-tags fa-3x text-muted mb-3 opacity-25"></i>
-                {% if can_manage_categories %}
-                <p>Create a new category to group your exams logically.</p>
+                <p>Create a new category to group exams logically.</p>
                 <a href="{% url 'dashboard_category_create' %}" class="btn btn-primary w-100">Add New Category</a>
-                {% else %}
-                <p class="mb-3">Only admins can add categories. If you need a new category, request it here for review.</p>
-                <form method="post" action="{% url 'dashboard_category_request_create' %}" class="text-start">
-                    {% csrf_token %}
-                    {{ category_request_form|crispy }}
-                    <button type="submit" class="btn btn-primary w-100">Request Category</button>
-                </form>
-                {% endif %}
             </div>
         </div>
     </div>
@@ -48,14 +39,10 @@
                                 <td>{{ cat.icon }}</td>
                                 <td><span class="badge bg-primary rounded-pill">{{ cat.exams_count }}</span></td>
                                 <td class="pe-3 text-end">
-                                    {% if can_manage_categories %}
                                     <a href="{% url 'dashboard_category_edit' pk=cat.pk %}"
                                         class="btn btn-sm btn-outline-info"><i class="fas fa-edit"></i></a>
                                     <a href="{% url 'dashboard_category_delete' pk=cat.pk %}"
                                         class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></a>
-                                    {% else %}
-                                    <span class="text-muted small">Admin only</span>
-                                    {% endif %}
                                 </td>
                             </tr>
                             {% empty %}
@@ -73,7 +60,7 @@
 
 <div class="card shadow-sm mt-4">
     <div class="card-header bg-white py-3">
-        <h6 class="m-0 fw-bold text-primary">{% if can_manage_categories %}Category Requests{% else %}My Category Requests{% endif %}</h6>
+        <h6 class="m-0 fw-bold text-primary">Category Requests</h6>
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -82,9 +69,7 @@
                     <tr>
                         <th class="ps-3">Name</th>
                         <th>Description</th>
-                        {% if can_manage_categories %}
                         <th>Requested By</th>
-                        {% endif %}
                         <th>Status</th>
                         <th>Created</th>
                         <th class="pe-3 text-end">Actions</th>
@@ -95,9 +80,7 @@
                     <tr>
                         <td class="ps-3 fw-bold">{{ item.name }}</td>
                         <td class="text-muted small">{{ item.description|default:"-" }}</td>
-                        {% if can_manage_categories %}
                         <td>{{ item.requested_by.username }}</td>
-                        {% endif %}
                         <td>
                             <span class="badge {% if item.status == 'PENDING' %}bg-warning text-dark{% elif item.status == 'APPROVED' %}bg-success{% else %}bg-danger{% endif %}">
                                 {{ item.get_status_display }}
@@ -105,7 +88,7 @@
                         </td>
                         <td>{{ item.created_at|date:"M d, Y" }}</td>
                         <td class="pe-3 text-end">
-                            {% if can_manage_categories and item.status == 'PENDING' %}
+                            {% if item.status == 'PENDING' %}
                             <a href="{% url 'dashboard_category_request_review' pk=item.pk action='approve' %}" class="btn btn-sm btn-outline-success">Approve</a>
                             <a href="{% url 'dashboard_category_request_review' pk=item.pk action='reject' %}" class="btn btn-sm btn-outline-danger">Reject</a>
                             {% elif item.created_category %}
@@ -117,7 +100,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="{% if can_manage_categories %}6{% else %}5{% endif %}" class="text-center py-4">No category requests found.</td>
+                        <td colspan="6" class="text-center py-4">No category requests found.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

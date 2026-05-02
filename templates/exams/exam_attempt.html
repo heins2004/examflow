@@ -175,6 +175,11 @@
                         <input type="text" class="form-control form-control-lg q-answer-text"
                             placeholder="Type your answer here...">
                     </div>
+                    {% elif q.question_type == 'SHORT_ANSWER' %}
+                    <div class="mb-3">
+                        <textarea class="form-control q-answer-text" rows="5"
+                            placeholder="Type your answer here..."></textarea>
+                    </div>
                     {% else %}
                     {% for opt in q.options.all %}
                     <div class="form-check p-0">
@@ -249,7 +254,7 @@
             let qId = card.getAttribute('data-id');
             let qType = card.getAttribute('data-type');
             if (ANSWERED_MAP[qId]) {
-                if (qType === 'FILL_BLANK') {
+                if (qType === 'FILL_BLANK' || qType === 'SHORT_ANSWER') {
                     card.querySelector('.q-answer-text').value = ANSWERED_MAP[qId];
                 } else {
                     let r = card.querySelector(`#opt_${ANSWERED_MAP[qId]}`);

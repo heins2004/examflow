@@ -5,8 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Examiner Dashboard | ExamFlow{% endblock %}</title>
-    <!-- Fonts -->
+    <title>{% block title %}Admin Dashboard | ExamFlow{% endblock %}</title>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap"
         rel="stylesheet">
@@ -24,43 +23,45 @@
 </head>
 
 <body>
-
     <div class="dashboard-wrap">
-        <!-- Sidebar -->
         <div class="sidebar d-flex flex-column p-3">
             <a href="/" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none px-2">
-                <span class="fs-4 fw-bold" style="font-family: 'Poppins', sans-serif;">Examiner Dashboard</span>
+                <span class="fs-4 fw-bold" style="font-family: 'Poppins', sans-serif;">Admin Dashboard</span>
             </a>
             <hr class="text-white text-opacity-50">
             <ul class="nav nav-pills flex-column mb-auto gap-2">
                 <li class="nav-item">
-                    <a href="{% url 'dashboard_home' %}" class="nav-link text-white">
-                        <i class="fas fa-home me-2"></i> Overview
+                    <a href="{% url 'admin_dashboard_home' %}" class="nav-link text-white">
+                        <i class="fas fa-gauge-high me-2"></i> Admin Overview
                     </a>
                 </li>
                 <li>
-                    <a href="{% url 'dashboard_exams' %}" class="nav-link text-white">
-                        <i class="fas fa-file-alt me-2"></i> Exams
+                    <a href="{% url 'admin_dashboard_exams' %}" class="nav-link text-white">
+                        <i class="fas fa-file-alt me-2"></i> All Exams
                     </a>
                 </li>
                 <li>
-                    <a href="{% url 'dashboard_categories' %}" class="nav-link text-white">
+                    <a href="{% url 'admin_dashboard_categories' %}" class="nav-link text-white">
                         <i class="fas fa-tags me-2"></i> Categories
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'admin_dashboard_users' %}" class="nav-link text-white">
+                        <i class="fas fa-users me-2"></i> Users
                     </a>
                 </li>
             </ul>
         </div>
 
-        <!-- Main Content -->
         <div class="dashboard-content w-100">
             <nav class="navbar navbar-expand-lg border-bottom mb-4 rounded-3 px-3">
                 <div class="container-fluid">
-                    <span class="navbar-brand mb-0 h1">{% block content_title %}Dashboard{% endblock %}</span>
+                    <span class="navbar-brand mb-0 h1">{% block content_title %}Admin Dashboard{% endblock %}</span>
                     <div class="d-flex align-items-center gap-2">
                         <button id="darkModeToggle" class="btn btn-sm btn-outline-secondary">
                             <i class="fas fa-moon"></i>
                         </button>
-                        <span class="me-3">Hello, {{ user.username }}</span>
+                        <span class="me-3">Admin: {{ user.username }}</span>
                         <a href="{% url 'home' %}" class="btn btn-sm btn-outline-secondary">Go to Site</a>
                     </div>
                 </div>

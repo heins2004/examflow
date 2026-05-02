@@ -11,8 +11,22 @@
 
             {{ form.exam|crispy }}
             {{ form.question_text|crispy }}
-            {{ form.question_type|crispy }}
             {{ form.image|crispy }}
+
+            <div class="mb-4">
+                <label class="form-label d-block">Question type</label>
+                {% if form.question_type.errors %}
+                <div class="invalid-feedback d-block mb-2">{{ form.question_type.errors|join:", " }}</div>
+                {% endif %}
+                <div class="question-type-grid">
+                    {% for choice in form.question_type %}
+                    <label class="question-type-card" for="{{ choice.id_for_label }}">
+                        {{ choice.tag }}
+                        <span>{{ choice.choice_label }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
 
             <div class="row">
                 <div class="col-md-4">{{ form.marks|crispy }}</div>
@@ -22,27 +36,48 @@
 
             {{ form.explanation|crispy }}
 
-            <div class="card mt-3">
+            <div class="card mt-3 d-none" id="answerSetupCard">
                 <div class="card-header">
                     <h6 class="mb-0">Answer Setup</h6>
                 </div>
                 <div class="card-body">
-                    <p class="text-muted small mb-3">
-                        For `MCQ` and `Image Based`, fill options and choose the correct one.
-                        For `True/False`, select the correct answer.
-                        For `Fill in the Blank`, enter the expected answer.
-                    </p>
-
-                    <div class="row">
+                    <div class="row d-none" data-question-panel="MCQ">
                         <div class="col-md-6">{{ form.option_1|crispy }}</div>
                         <div class="col-md-6">{{ form.option_2|crispy }}</div>
                         <div class="col-md-6">{{ form.option_3|crispy }}</div>
                         <div class="col-md-6">{{ form.option_4|crispy }}</div>
+                        <div class="col-12 mt-2">
+                            <label class="form-label d-block">Correct option</label>
+                            <div class="question-type-grid compact">
+                                {% for choice in form.correct_option %}
+                                <label class="question-type-card compact" for="{{ choice.id_for_label }}">
+                                    {{ choice.tag }}
+                                    <span>{{ choice.choice_label }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
                     </div>
 
-                    {{ form.correct_option|crispy }}
-                    {{ form.true_false_answer|crispy }}
-                    {{ form.fill_blank_answer|crispy }}
+                    <div class="d-none" data-question-panel="TRUE_FALSE">
+                        <label class="form-label d-block">Correct answer</label>
+                        <div class="question-type-grid compact">
+                            {% for choice in form.true_false_answer %}
+                            <label class="question-type-card compact" for="{{ choice.id_for_label }}">
+                                {{ choice.tag }}
+                                <span>{{ choice.choice_label }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="d-none" data-question-panel="FILL_BLANK">
+                        {{ form.fill_blank_answer|crispy }}
+                    </div>
+
+                    <div class="d-none" data-question-panel="SHORT_ANSWER">
+                        {{ form.short_answer|crispy }}
+                    </div>
                 </div>
             </div>
 
@@ -57,4 +92,75 @@
         </form>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .question-type-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+    }
+
+    .question-type-grid.compact {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    }
+
+    .question-type-card {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 16px;
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        background: var(--surface-strong);
+        cursor: pointer;
+        transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .question-type-card.compact {
+        padding: 12px 14px;
+    }
+
+    .question-type-card .form-check-input {
+        margin: 0;
+        min-height: 1rem;
+        width: 1rem;
+        height: 1rem;
+        border-radius: 0.25rem;
+    }
+
+    .question-type-card:has(.form-check-input:checked) {
+        border-color: var(--primary-color);
+        background: rgba(21, 58, 91, 0.08);
+        box-shadow: 0 0 0 1px rgba(21, 58, 91, 0.12);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const answerSetupCard = document.getElementById("answerSetupCard");
+        const questionTypeInputs = document.querySelectorAll('input[name="question_type"]');
+        const panels = document.querySelectorAll("[data-question-panel]");
+
+        function syncQuestionTypePanels() {
+            const selected = document.querySelector('input[name="question_type"]:checked');
+            const selectedValue = selected ? selected.value : "";
+
+            answerSetupCard.classList.toggle("d-none", !selectedValue);
+            panels.forEach((panel) => {
+                panel.classList.toggle("d-none", panel.dataset.questionPanel !== selectedValue);
+            });
+        }
+
+        questionTypeInputs.forEach((input) => {
+            input.addEventListener("change", syncQuestionTypePanels);
+        });
+
+        syncQuestionTypePanels();
+    });
+</script>
 {% endblock %}

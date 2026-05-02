@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import login, authenticate
+from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .forms import CustomUserCreationForm, CustomAuthenticationForm, UserProfileForm
@@ -8,12 +8,7 @@ from apps.exams.models import ExamAttempt, Exam
 
 def home(request):
     featured_exams = Exam.objects.filter(is_active=True).order_by('-created_at')[:3]
-    stats = {
-        'active_exams': Exam.objects.filter(is_active=True).count(),
-        'student_count': User.objects.filter(role=User.Role.STUDENT).count(),
-        'completed_attempts': ExamAttempt.objects.filter(status='SUBMITTED').count(),
-    }
-    return render(request, 'accounts/home.html', {'exams': featured_exams, 'stats': stats})
+    return render(request, 'accounts/home.html', {'exams': featured_exams})
 
 def register(request):
     if request.user.is_authenticated:
@@ -33,6 +28,8 @@ def register(request):
 
 def user_login(request):
     if request.user.is_authenticated:
+        if request.user.is_superuser or request.user.role == User.Role.ADMIN:
+            return redirect('admin_dashboard_home')
         return redirect('home')
     if request.method == 'POST':
         form = CustomAuthenticationForm(request, data=request.POST)
@@ -44,7 +41,10 @@ def user_login(request):
             if not remember:
                 request.session.set_expiry(0)
             messages.success(request, f"Welcome back, {user.username}!")
-            return redirect(request.GET.get('next', 'home'))
+            next_url = request.GET.get('next')
+            if user.is_superuser or user.role == User.Role.ADMIN:
+                return redirect('admin_dashboard_home')
+            return redirect(next_url or 'home')
         else:
             messages.error(request, "Invalid username or password.")
     else:

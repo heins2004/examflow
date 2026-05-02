@@ -39,39 +39,9 @@
                 <div><i class="fas fa-venus-mars me-2"></i>{{ user.get_gender_display|default:"Not provided" }}</div>
             </div>
         </div>
-
-        {% if user.role == 'EXAMINER' %}
-        <div class="info-banner">
-            <div class="fw-semibold text-dark mb-2">Examiner payment</div>
-            <p class="small mb-2">Status: <span class="badge bg-success">{{ user.get_examiner_payment_status_display }}</span></p>
-            <p class="small mb-1">Amount: Rs. {{ user.examiner_payment_amount }}</p>
-            <p class="small mb-0">Reference: {{ user.examiner_payment_reference }}</p>
-        </div>
-        {% endif %}
     </aside>
 
     <section class="profile-panel">
-        <div class="row g-3 mb-4">
-            <div class="col-md-4">
-                <div class="profile-stat" style="background: linear-gradient(135deg, var(--primary-color), #2b628d);">
-                    <h2>{{ total_exams }}</h2>
-                    <span class="small opacity-75">Exams taken</span>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="profile-stat" style="background: linear-gradient(135deg, var(--accent-color), #ff9f6f);">
-                    <h2>{{ avg_score|floatformat:1 }}%</h2>
-                    <span class="small opacity-75">Average score</span>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="profile-stat" style="background: linear-gradient(135deg, var(--success-color), #6ed0aa);">
-                    <h2>{{ pass_rate|floatformat:0 }}%</h2>
-                    <span class="small opacity-75">Pass rate</span>
-                </div>
-            </div>
-        </div>
-
         <div class="card profile-panel">
             <div class="panel-title">
                 <div>

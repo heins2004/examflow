@@ -1,18 +1,21 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, UpdateView, DeleteView
 from django.utils.decorators import method_decorator
+from django.utils.text import slugify
 from apps.exams.models import Exam, ExamAttempt, Category, Question
 from apps.accounts.models import User
 from .forms import (
     CategoryForm,
+    CategoryRequestForm,
     DashboardUserCreateForm,
     DashboardUserUpdateForm,
     ExamForm,
     QuestionForm,
 )
+from .models import CategoryRequest
 from django.db.models import Count
 from django.utils import timezone
 
@@ -53,11 +56,7 @@ def analytics_exams_for(user):
     return manageable_exams_for(user)
 
 
-@login_required
-@dashboard_access_required
-def dashboard_home(request):
-    manageable_exams = manageable_exams_for(request.user)
-    analytics_exams = analytics_exams_for(request.user)
+def build_dashboard_home_context(user, manageable_exams, analytics_exams, is_global_analytics):
     attempts = ExamAttempt.objects.filter(exam__in=analytics_exams)
     total_users = User.objects.count()
     active_exams = analytics_exams.filter(is_active=True).count()
@@ -72,41 +71,188 @@ def dashboard_home(request):
         'public': analytics_exams.filter(visibility='PUBLIC').count(),
         'private': analytics_exams.filter(visibility='PRIVATE').count(),
     }
-    exams_by_type = list(
-        analytics_exams.values('exam_type').annotate(total=Count('id')).order_by('exam_type')
+    exam_activity = list(
+        manageable_exams.annotate(total_attempts=Count('attempts')).values('title', 'total_attempts').order_by('title')
     )
     recent_exams = manageable_exams.order_by('-created_at')[:5]
 
-    return render(request, 'dashboard/home.html', {
+    return {
         'total_users': total_users,
         'active_exams': active_exams,
         'attempts_today': attempts_today,
         'pass_rate': pass_rate,
         'recent_attempts': attempts.order_by('-started_at')[:5],
         'recent_exams': recent_exams,
-        'managed_exam_count': analytics_exams.count() if (request.user.is_superuser or request.user.role == User.Role.ADMIN) else manageable_exams.count(),
+        'managed_exam_count': analytics_exams.count() if is_global_analytics else manageable_exams.count(),
         'exams_by_visibility': exams_by_visibility,
-        'exams_by_type': exams_by_type,
-        'is_global_analytics': request.user.is_superuser or request.user.role == User.Role.ADMIN,
-    })
+        'exam_activity': exam_activity,
+        'is_global_analytics': is_global_analytics,
+    }
+
+
+@login_required
+@dashboard_access_required
+def dashboard_home(request):
+    if is_admin_user(request.user):
+        return redirect('admin_dashboard_home')
+
+    manageable_exams = manageable_exams_for(request.user)
+    analytics_exams = analytics_exams_for(request.user)
+    context = build_dashboard_home_context(
+        request.user,
+        manageable_exams,
+        analytics_exams,
+        False,
+    )
+    return render(request, 'dashboard/home.html', context)
+
+
+@login_required
+@admin_required
+def admin_dashboard_home(request):
+    manageable_exams = manageable_exams_for(request.user)
+    analytics_exams = analytics_exams_for(request.user)
+    context = build_dashboard_home_context(
+        request.user,
+        manageable_exams,
+        analytics_exams,
+        True,
+    )
+    return render(request, 'admin_dashboard/home.html', context)
 
 @login_required
 @dashboard_access_required
 def dashboard_exams(request):
-    exams = manageable_exams_for(request.user).annotate(attempts_count=Count('attempts')).order_by('-created_at')
-    return render(request, 'dashboard/exams.html', {'exams': exams})
+    if is_admin_user(request.user):
+        return redirect('admin_dashboard_exams')
+
+    exams = manageable_exams_for(request.user).annotate(
+        attempts_count=Count('attempts', distinct=True),
+        questions_count=Count('questions', distinct=True),
+    ).order_by('-created_at')
+    return render(request, 'dashboard/exams.html', {
+        'exams': exams,
+    })
+
+
+@login_required
+@admin_required
+def admin_dashboard_exams(request):
+    exams = Exam.objects.annotate(
+        attempts_count=Count('attempts', distinct=True),
+        questions_count=Count('questions', distinct=True),
+    ).order_by('-created_at')
+    return render(request, 'admin_dashboard/exams.html', {
+        'exams': exams,
+    })
 
 @login_required
 @dashboard_access_required
 def dashboard_categories(request):
+    if is_admin_user(request.user):
+        return redirect('admin_dashboard_categories')
+
     categories = Category.objects.annotate(exams_count=Count('exams')).order_by('-created_at')
-    return render(request, 'dashboard/categories.html', {'categories': categories})
+    category_requests = CategoryRequest.objects.filter(requested_by=request.user).select_related('created_category')
+
+    return render(request, 'dashboard/categories.html', {
+        'categories': categories,
+        'can_manage_categories': False,
+        'category_request_form': CategoryRequestForm(),
+        'category_requests': category_requests,
+    })
+
+
+@login_required
+@admin_required
+def admin_dashboard_categories(request):
+    categories = Category.objects.annotate(exams_count=Count('exams')).order_by('-created_at')
+    category_requests = CategoryRequest.objects.select_related('requested_by', 'created_category', 'reviewed_by')
+    return render(request, 'admin_dashboard/categories.html', {
+        'categories': categories,
+        'can_manage_categories': True,
+        'category_request_form': CategoryRequestForm(),
+        'category_requests': category_requests,
+    })
+
+
+@login_required
+@dashboard_access_required
+def dashboard_category_request_create(request):
+    if request.user.role != User.Role.EXAMINER and not request.user.is_superuser:
+        messages.error(request, "Only examiners can request a new category.")
+        return redirect('dashboard_categories')
+
+    if request.method != 'POST':
+        return redirect('dashboard_categories')
+
+    form = CategoryRequestForm(request.POST)
+    if form.is_valid():
+        category_request = form.save(commit=False)
+        category_request.requested_by = request.user
+        category_request.save()
+        messages.success(request, "Category request submitted for admin review.")
+    else:
+        messages.error(request, "Please correct the category request form.")
+    return redirect('dashboard_categories')
+
+
+@login_required
+@admin_required
+def dashboard_category_request_review(request, pk, action):
+    category_request = get_object_or_404(CategoryRequest, pk=pk)
+    if category_request.status != CategoryRequest.Status.PENDING:
+        messages.warning(request, "This category request has already been reviewed.")
+        return redirect('dashboard_categories')
+
+    category_request.reviewed_by = request.user
+    category_request.reviewed_at = timezone.now()
+
+    if action == 'approve':
+        category_name = category_request.name.strip()
+        slug = slugify(category_name)
+        suffix = 1
+        unique_slug = slug
+        while Category.objects.filter(slug=unique_slug).exists():
+            suffix += 1
+            unique_slug = f"{slug}-{suffix}"
+
+        category, created = Category.objects.get_or_create(
+            name=category_name,
+            defaults={
+                'slug': unique_slug,
+                'description': category_request.description,
+            },
+        )
+        if not created and not category.slug:
+            category.slug = unique_slug
+            category.save(update_fields=['slug'])
+        category_request.status = CategoryRequest.Status.APPROVED
+        category_request.created_category = category
+        category_request.admin_notes = "Approved by admin."
+        category_request.save()
+        messages.success(request, "Category request approved.")
+    elif action == 'reject':
+        category_request.status = CategoryRequest.Status.REJECTED
+        category_request.admin_notes = "Rejected by admin."
+        category_request.save()
+        messages.success(request, "Category request rejected.")
+    else:
+        messages.error(request, "Invalid category request action.")
+
+    return redirect('dashboard_categories')
 
 @login_required
 @admin_required
 def dashboard_users(request):
     users = User.objects.annotate(attempts_count=Count('exam_attempts')).order_by('-date_joined')
-    return render(request, 'dashboard/users.html', {'users': users})
+    return render(request, 'admin_dashboard/users.html', {'users': users})
+
+
+@login_required
+@admin_required
+def admin_dashboard_users(request):
+    return dashboard_users(request)
 
 
 @method_decorator([login_required, admin_required], name='dispatch')
@@ -177,7 +323,7 @@ class ExamDeleteView(DeleteView):
         return manageable_exams_for(self.request.user)
 
 
-@method_decorator([login_required, dashboard_access_required], name='dispatch')
+@method_decorator([login_required, admin_required], name='dispatch')
 class CategoryCreateView(CreateView):
     model = Category
     form_class = CategoryForm
@@ -185,7 +331,7 @@ class CategoryCreateView(CreateView):
     success_url = reverse_lazy('dashboard_categories')
 
 
-@method_decorator([login_required, dashboard_access_required], name='dispatch')
+@method_decorator([login_required, admin_required], name='dispatch')
 class CategoryUpdateView(UpdateView):
     model = Category
     form_class = CategoryForm
@@ -193,7 +339,7 @@ class CategoryUpdateView(UpdateView):
     success_url = reverse_lazy('dashboard_categories')
 
 
-@method_decorator([login_required, dashboard_access_required], name='dispatch')
+@method_decorator([login_required, admin_required], name='dispatch')
 class CategoryDeleteView(DeleteView):
     model = Category
     template_name = 'dashboard/confirm_delete.html'
