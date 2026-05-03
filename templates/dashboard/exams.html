@@ -18,9 +18,6 @@
                         <th>Type</th>
                         <th>Visibility</th>
                         <th>Exam Code</th>
-                        <th>Duration</th>
-                        <th>Attempts</th>
-                        <th>Status</th>
                         <th class="pe-3 text-end">Actions</th>
                     </tr>
                 </thead>
@@ -28,40 +25,42 @@
                     {% for exam in exams %}
                     <tr>
                         <td class="ps-3 fw-bold">
-                            <div class="exam-hover-anchor"
-                                data-exam-title="{{ exam.title|escape }}"
+                            <div class="exam-hover-anchor" data-exam-title="{{ exam.title|escape }}"
                                 data-exam-attempts="{{ exam.attempts_count }}"
                                 data-exam-questions="{{ exam.questions_count }}"
                                 data-exam-duration="{% if exam.duration_minutes %}{{ exam.duration_minutes }}{% else %}0{% endif %}"
                                 data-exam-marks="{{ exam.total_marks }}">
-                                <div class="exam-hover-title">{{ exam.title }}</div>
-                                <div class="small text-muted">Hover to view activity graph</div>
+                                <a href="javascript:void(0)" class="exam-hover-title text-decoration-none">{{ exam.title
+                                    }}</a>
                             </div>
                         </td>
                         <td><span class="badge bg-secondary">{{ exam.category.name }}</span></td>
                         <td>{{ exam.get_exam_type_display }}</td>
-                        <td><span class="badge {% if exam.visibility == 'PUBLIC' %}bg-success{% else %}bg-dark{% endif %}">{{ exam.get_visibility_display }}</span></td>
-                        <td>{{ exam.exam_code }}</td>
-                        <td>{{ exam.duration_label }}</td>
-                        <td>{{ exam.attempts_count }}</td>
+                        <td><span
+                                class="badge {% if exam.visibility == 'PUBLIC' %}bg-success{% else %}bg-dark{% endif %}">{{
+                                exam.get_visibility_display }}</span></td>
                         <td>
-                            {% if exam.is_released %}
-                            <span class="badge bg-success">Released</span>
-                            {% else %}
-                            <span class="badge bg-warning text-dark">Draft</span>
-                            {% endif %}
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="exam-code-text">{{ exam.exam_code }}</span>
+                                <button type="button" class="btn btn-sm btn-outline-secondary copy-code-btn"
+                                    data-code="{{ exam.exam_code }}" title="Copy Code">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
                         </td>
                         <td class="pe-3 text-end">
                             <a href="{% url 'dashboard_questions' exam_id=exam.pk %}" class="btn btn-sm btn-primary">
                                 <i class="fas fa-plus me-1"></i> Add Questions
                             </a>
-                            <a href="{% url 'dashboard_exam_attendees' exam_id=exam.pk %}" class="btn btn-sm btn-outline-secondary">
+                            <a href="{% url 'dashboard_exam_attendees' exam_id=exam.pk %}"
+                                class="btn btn-sm btn-outline-secondary">
                                 <i class="fas fa-users"></i>
                             </a>
                             {% if not exam.is_released %}
                             <form method="post" action="{% url 'dashboard_exam_release' pk=exam.pk %}" class="d-inline">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-outline-success"><i class="fas fa-upload"></i></button>
+                                <button type="submit" class="btn btn-sm btn-outline-success"><i
+                                        class="fas fa-upload"></i></button>
                             </form>
                             {% endif %}
                             <a href="{% url 'dashboard_exam_edit' pk=exam.pk %}" class="btn btn-sm btn-outline-info"><i
@@ -136,6 +135,7 @@
     .exam-hover-popup.is-visible {
         opacity: 1;
         transform: translateY(0) scale(1);
+        pointer-events: auto;
     }
 
     .exam-hover-popup-card {
@@ -230,14 +230,37 @@
         }
 
         hoverTargets.forEach((target) => {
-            target.addEventListener("mouseenter", () => showPopup(target));
-            target.addEventListener("mouseleave", hidePopup);
-            target.addEventListener("focusin", () => showPopup(target));
-            target.addEventListener("focusout", hidePopup);
+            target.addEventListener("click", (e) => {
+                e.stopPropagation();
+                if (popup.classList.contains("is-visible") && popupTitle.textContent === target.dataset.examTitle) {
+                    hidePopup();
+                } else {
+                    showPopup(target);
+                }
+            });
         });
 
-        window.addEventListener("scroll", hidePopup, { passive: true });
+        document.addEventListener("click", (e) => {
+            if (!popup.contains(e.target) && !e.target.closest(".exam-hover-anchor")) {
+                hidePopup();
+            }
+        });
+
         window.addEventListener("resize", hidePopup);
+
+        document.querySelectorAll('.copy-code-btn').forEach(button => {
+            button.addEventListener('click', function (e) {
+                e.stopPropagation();
+                const code = this.dataset.code;
+                navigator.clipboard.writeText(code).then(() => {
+                    const icon = this.querySelector('i');
+                    icon.className = 'fas fa-check text-success';
+                    setTimeout(() => {
+                        icon.className = 'fas fa-copy';
+                    }, 2000);
+                });
+            });
+        });
     });
 </script>
 {% endblock %}
