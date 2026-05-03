@@ -17,7 +17,7 @@ from .forms import (
     QuestionForm,
 )
 from .models import CategoryRequest
-from django.db.models import Count, Sum
+from django.db.models import Count, Sum, Q
 from django.utils import timezone
 import csv
 
@@ -43,7 +43,7 @@ admin_required = user_passes_test(is_admin_user, login_url='login')
 
 
 def manageable_exams_for(user):
-    if user.is_superuser:
+    if user.is_superuser or user.role == User.Role.ADMIN:
         return Exam.objects.all()
     return Exam.objects.filter(created_by=user)
 
@@ -128,6 +128,8 @@ def dashboard_exams(request):
     exams = manageable_exams_for(request.user).annotate(
         attempts_count=Count('attempts', distinct=True),
         questions_count=Count('questions', distinct=True),
+        passed_count=Count('attempts', filter=Q(attempts__status='SUBMITTED', attempts__is_passed=True), distinct=True),
+        failed_count=Count('attempts', filter=Q(attempts__status='SUBMITTED', attempts__is_passed=False), distinct=True),
     ).order_by('-created_at')
     return render(request, 'dashboard/exams.html', {
         'exams': exams,
@@ -140,6 +142,8 @@ def admin_dashboard_exams(request):
     exams = Exam.objects.annotate(
         attempts_count=Count('attempts', distinct=True),
         questions_count=Count('questions', distinct=True),
+        passed_count=Count('attempts', filter=Q(attempts__status='SUBMITTED', attempts__is_passed=True), distinct=True),
+        failed_count=Count('attempts', filter=Q(attempts__status='SUBMITTED', attempts__is_passed=False), distinct=True),
     ).order_by('-created_at')
     return render(request, 'admin_dashboard/exams.html', {
         'exams': exams,

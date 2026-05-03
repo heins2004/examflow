@@ -16,14 +16,14 @@
         <img src="{{ exam.thumbnail.url }}" class="card-img-top rounded-4 mb-4" style="height: 280px; object-fit: cover;" alt="{{ exam.title }}">
         {% else %}
         <div class="detail-hero-fallback rounded-4 p-4 mb-4">
-            <span class="badge bg-light text-primary mb-2">{{ exam.category.name }}</span>
+            <span class="badge bg-light text-primary mb-2">{{ exam.category.name|default:"Uncategorized" }}</span>
             <h1 class="text-white mb-2">{{ exam.title }}</h1>
             <p class="text-white-50 mb-0">Review the details below before starting your attempt.</p>
         </div>
         {% endif %}
 
         {% if exam.thumbnail %}
-        <span class="badge bg-primary mb-2">{{ exam.category.name }}</span>
+        <span class="badge bg-primary mb-2">{{ exam.category.name|default:"Uncategorized" }}</span>
         <h1 class="mb-3">{{ exam.title }}</h1>
         {% endif %}
 

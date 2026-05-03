@@ -23,6 +23,7 @@
 </head>
 
 <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
     <div class="site-bg">
         <div class="site-orb site-orb-one"></div>
         <div class="site-orb site-orb-two"></div>
@@ -87,8 +88,8 @@
 
     <div class="toast-container position-fixed bottom-0 end-0 p-3">
         {% for message in messages %}
-        <div class="toast align-items-center text-bg-{{ message.tags }} border-0" role="alert" aria-live="assertive"
-            aria-atomic="true">
+        <div class="toast align-items-center border-0 {% if 'error' in message.tags %}text-bg-danger{% elif 'warning' in message.tags %}text-bg-warning{% elif 'success' in message.tags %}text-bg-success{% else %}text-bg-primary{% endif %}"
+            role="alert" aria-live="assertive" aria-atomic="true">
             <div class="d-flex">
                 <div class="toast-body">
                     {{ message }}
@@ -100,7 +101,7 @@
         {% endfor %}
     </div>
 
-    <main class="container app-main">
+    <main id="main-content" class="container app-main">
         {% block content %}{% endblock %}
     </main>
 

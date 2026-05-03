@@ -23,8 +23,10 @@
 </head>
 
 <body>
-    <div class="dashboard-wrap">
-        <div class="sidebar d-flex flex-column p-3">
+    <a class="skip-link" href="#admin-main-content">Skip to main content</a>
+    <div class="dashboard-wrap dashboard-sidebar-collapsed">
+        <div class="dashboard-sidebar-backdrop" id="dashboardSidebarBackdrop" aria-hidden="true"></div>
+        <aside id="dashboardSidebar" class="sidebar d-flex flex-column p-3" role="navigation" aria-label="Admin navigation">
             <a href="/" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none px-2">
                 <span class="fs-4 fw-bold" style="font-family: 'Poppins', sans-serif;">Admin Dashboard</span>
             </a>
@@ -51,17 +53,23 @@
                     </a>
                 </li>
             </ul>
-        </div>
+        </aside>
 
         <div class="dashboard-content w-100">
             <nav class="navbar navbar-expand-lg border-bottom mb-4 rounded-3 px-3">
                 <div class="container-fluid">
-                    <span class="navbar-brand mb-0 h1">{% block content_title %}Admin Dashboard{% endblock %}</span>
+                    <span class="navbar-brand mb-0 h1 d-flex align-items-center">
+                        <button class="btn btn-outline-secondary me-3 border-0" id="sidebarToggle" type="button"
+                            aria-controls="dashboardSidebar" aria-expanded="true" aria-label="Open or close navigation menu">
+                            <i class="fas fa-bars" aria-hidden="true"></i>
+                        </button>
+                        {% block content_title %}Admin Dashboard{% endblock %}
+                    </span>
                     <div class="d-flex align-items-center gap-2">
                         <button id="darkModeToggle" class="btn btn-sm btn-outline-secondary">
                             <i class="fas fa-moon"></i>
                         </button>
-                        <span class="me-3">Admin: {{ user.username }}</span>
+                        <span class="me-3 d-none d-md-inline">Admin: {{ user.username }}</span>
                         <a href="{% url 'home' %}" class="btn btn-sm btn-outline-secondary">Go to Site</a>
                     </div>
                 </div>
@@ -69,8 +77,8 @@
 
             <div class="toast-container position-fixed bottom-0 end-0 p-3">
                 {% for message in messages %}
-                <div class="toast align-items-center text-bg-{{ message.tags }} border-0" role="alert"
-                    aria-live="assertive" aria-atomic="true">
+                <div class="toast align-items-center border-0 {% if 'error' in message.tags %}text-bg-danger{% elif 'warning' in message.tags %}text-bg-warning{% elif 'success' in message.tags %}text-bg-success{% else %}text-bg-primary{% endif %}"
+                    role="alert" aria-live="assertive" aria-atomic="true">
                     <div class="d-flex">
                         <div class="toast-body">
                             {{ message }}
@@ -82,7 +90,9 @@
                 {% endfor %}
             </div>
 
-            {% block content %}{% endblock %}
+            <main id="admin-main-content">
+                {% block content %}{% endblock %}
+            </main>
         </div>
     </div>
 

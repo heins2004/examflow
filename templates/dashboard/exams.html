@@ -17,6 +17,7 @@
                         <th>Category</th>
                         <th>Type</th>
                         <th>Visibility</th>
+                        <th>Created</th>
                         <th>Exam Code</th>
                         <th class="pe-3 text-end">Actions</th>
                     </tr>
@@ -27,18 +28,15 @@
                         <td class="ps-3 fw-bold">
                             <div class="exam-hover-anchor" data-exam-title="{{ exam.title|escape }}"
                                 data-exam-attempts="{{ exam.attempts_count }}"
-                                data-exam-questions="{{ exam.questions_count }}"
-                                data-exam-duration="{% if exam.duration_minutes %}{{ exam.duration_minutes }}{% else %}0{% endif %}"
-                                data-exam-marks="{{ exam.total_marks }}">
-                                <a href="javascript:void(0)" class="exam-hover-title text-decoration-none">{{ exam.title
-                                    }}</a>
+                                data-exam-passed="{{ exam.passed_count }}"
+                                data-exam-failed="{{ exam.failed_count }}">
+                                <a href="javascript:void(0)" class="exam-hover-title text-decoration-none">{{ exam.title }}</a>
                             </div>
                         </td>
-                        <td><span class="badge bg-secondary">{{ exam.category.name }}</span></td>
+                        <td><span class="badge bg-secondary">{{ exam.category.name|default:"Uncategorized" }}</span></td>
                         <td>{{ exam.get_exam_type_display }}</td>
-                        <td><span
-                                class="badge {% if exam.visibility == 'PUBLIC' %}bg-success{% else %}bg-dark{% endif %}">{{
-                                exam.get_visibility_display }}</span></td>
+                        <td><span class="badge {% if exam.visibility == 'PUBLIC' %}bg-success{% else %}bg-dark{% endif %}">{{ exam.get_visibility_display }}</span></td>
+                        <td class="small text-muted text-nowrap">{{ exam.created_at|date:"M j, Y" }}</td>
                         <td>
                             <div class="d-flex align-items-center gap-2">
                                 <span class="exam-code-text">{{ exam.exam_code }}</span>
@@ -71,7 +69,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="9" class="text-center py-4">No exams found.</td>
+                        <td colspan="7" class="text-center py-4">No exams found.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -90,20 +88,28 @@
             <span class="badge bg-primary">Preview</span>
         </div>
         <div class="row g-2 mb-3">
-            <div class="col-6">
+            <div class="col-4">
                 <div class="stat-tile h-100">
                     <div class="small text-muted">Attempts</div>
                     <div id="examHoverAttempts" class="fw-semibold"></div>
                 </div>
             </div>
-            <div class="col-6">
+            <div class="col-4">
                 <div class="stat-tile h-100">
-                    <div class="small text-muted">Questions</div>
-                    <div id="examHoverQuestions" class="fw-semibold"></div>
+                    <div class="small text-muted">Passed</div>
+                    <div id="examHoverPassed" class="fw-semibold text-success"></div>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="stat-tile h-100">
+                    <div class="small text-muted">Failed</div>
+                    <div id="examHoverFailed" class="fw-semibold text-danger"></div>
                 </div>
             </div>
         </div>
-        <canvas id="examHoverChart" height="120"></canvas>
+        <div class="exam-hover-chart-scroll">
+            <canvas id="examHoverChart" height="120"></canvas>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -124,7 +130,7 @@
 
     .exam-hover-popup {
         position: fixed;
-        width: 280px;
+        width: 320px;
         pointer-events: none;
         opacity: 0;
         transform: translateY(10px) scale(0.98);
@@ -144,8 +150,16 @@
         background: var(--surface-strong);
         border: 1px solid var(--border-color);
         box-shadow: 0 24px 50px rgba(18, 35, 52, 0.18);
-        max-height: 260px;
+        max-height: 320px;
         overflow-y: auto;
+    }
+
+    .exam-hover-chart-scroll {
+        overflow-x: auto;
+    }
+
+    #examHoverChart {
+        min-width: 380px;
     }
 </style>
 {% endblock %}
@@ -156,7 +170,8 @@
         const popup = document.getElementById("examHoverPopup");
         const popupTitle = document.getElementById("examHoverPopupTitle");
         const attemptsValue = document.getElementById("examHoverAttempts");
-        const questionsValue = document.getElementById("examHoverQuestions");
+        const passedValue = document.getElementById("examHoverPassed");
+        const failedValue = document.getElementById("examHoverFailed");
         const popupCanvas = document.getElementById("examHoverChart");
         const hoverTargets = document.querySelectorAll(".exam-hover-anchor");
         if (!popup || !popupCanvas || !hoverTargets.length) {
@@ -166,16 +181,16 @@
         const popupChart = new Chart(popupCanvas, {
             type: "bar",
             data: {
-                labels: ["Attempts", "Questions", "Duration", "Marks"],
+                labels: ["Attempted", "Passed", "Failed"],
                 datasets: [{
-                    label: "Exam details",
-                    data: [0, 0, 0, 0],
-                    backgroundColor: ["#1f5fa3", "#ff7a59", "#1f9d74", "#f3b63f"],
+                    label: "Exam activity",
+                    data: [0, 0, 0],
+                    backgroundColor: ["#1f5fa3", "#1f9d74", "#ff7a59"],
                     borderRadius: 8
                 }]
             },
             options: {
-                responsive: true,
+                responsive: false,
                 maintainAspectRatio: false,
                 animation: {
                     duration: 180
@@ -211,12 +226,12 @@
         function showPopup(target) {
             popupTitle.textContent = target.dataset.examTitle;
             attemptsValue.textContent = target.dataset.examAttempts;
-            questionsValue.textContent = target.dataset.examQuestions;
+            passedValue.textContent = target.dataset.examPassed;
+            failedValue.textContent = target.dataset.examFailed;
             popupChart.data.datasets[0].data = [
                 Number(target.dataset.examAttempts),
-                Number(target.dataset.examQuestions),
-                Number(target.dataset.examDuration),
-                Number(target.dataset.examMarks)
+                Number(target.dataset.examPassed),
+                Number(target.dataset.examFailed)
             ];
             popupChart.update();
             popup.classList.add("is-visible");

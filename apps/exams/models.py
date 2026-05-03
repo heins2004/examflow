@@ -30,7 +30,7 @@ class Exam(models.Model):
     title = models.CharField(max_length=200)
     slug = models.SlugField(unique=True)
     description = models.TextField()
-    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='exams')
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='exams')
     exam_type = models.CharField(max_length=50, choices=EXAM_TYPE_CHOICES)
     duration_minutes = models.PositiveIntegerField(null=True, blank=True)
     is_unlimited_time = models.BooleanField(default=False)

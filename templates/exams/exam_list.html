@@ -31,7 +31,7 @@
                         <span class="badge bg-secondary rounded-pill">{{ categories|length }}</span>
                     </a>
                     {% for cat in categories %}
-                    <a href="?category={{ cat.slug }}"
+                    <a href="?category={{ cat.slug }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}"
                         class="category-link {% if current_category == cat.slug %}active{% endif %}">
                         <span>{% if cat.icon %}{{ cat.icon }} {% endif %}{{ cat.name }}</span>
                         <span class="badge bg-secondary rounded-pill">{{ cat.exams.count }}</span>
@@ -65,7 +65,7 @@
                     {% endif %}
                     <div class="card-body">
                         <div class="d-flex justify-content-between mb-2">
-                            <span class="badge bg-primary">{{ exam.category.name }}</span>
+                            <span class="badge bg-primary">{{ exam.category.name|default:"Uncategorized" }}</span>
                             <span class="badge bg-secondary">{{ exam.get_exam_type_display }}</span>
                         </div>
                         <h5 class="card-title text-truncate">{{ exam.title }}</h5>

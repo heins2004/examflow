@@ -51,6 +51,7 @@
                         <th>Type</th>
                         <th>Marks</th>
                         <th>Options</th>
+                        <th>Answer(s)</th>
                         <th class="pe-3 text-end">Actions</th>
                     </tr>
                 </thead>
@@ -62,6 +63,15 @@
                         <td>{{ question.get_question_type_display }}</td>
                         <td>{{ question.marks }}</td>
                         <td>{{ question.options.count }}</td>
+                        <td class="small text-muted">
+                            {% for option in question.options.all %}
+                                {% if option.is_correct %}
+                                    <span class="d-block">{{ option.option_text|truncatechars:40 }}</span>
+                                {% endif %}
+                            {% empty %}
+                                <span>-</span>
+                            {% endfor %}
+                        </td>
                         <td class="pe-3 text-end">
                             <a href="{% url 'dashboard_question_edit' pk=question.pk %}" class="btn btn-sm btn-outline-info">
                                 <i class="fas fa-edit"></i>
@@ -73,7 +83,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center py-4">No questions added yet.</td>
+                        <td colspan="7" class="text-center py-4">No questions added yet.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

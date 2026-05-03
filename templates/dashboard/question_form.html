@@ -154,9 +154,8 @@
         const panels = document.querySelectorAll("[data-question-panel]");
         const marksInput = document.getElementById("id_marks");
         const remainingMarksText = document.getElementById("remainingMarksText");
-        const baseRemainingMarks = {{ remaining_marks|default: "0"
-    }};
-    const isEditing = {% if object %}true{% else %} false{% endif %};
+        const baseRemainingMarks = {{ remaining_marks|default:"0" }};
+    const isEditing = {% if object %}true{% else %}false{% endif %};
     const currentMarks = {{ object.marks|default: "0" }};
 
     function syncQuestionTypePanels() {

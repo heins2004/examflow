@@ -21,6 +21,11 @@ class ExamForm(BootstrapFormMixin, forms.ModelForm):
             "end_time": forms.DateTimeInput(attrs={"type": "datetime-local"}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["category"].required = False
+        self.fields["category"].empty_label = "No category"
+
     def clean_slug(self):
         slug = (self.cleaned_data.get("slug") or "").strip()
         title = (self.cleaned_data.get("title") or "").strip()
