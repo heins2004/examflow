@@ -3,51 +3,12 @@
 
 {% block content %}
 <div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card shadow-sm border-0 border-start border-primary border-4 py-2">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-xs fw-bold text-primary text-uppercase mb-1">Total Users</div>
-                        <div class="h5 mb-0 fw-bold">{{ total_users }}</div>
-                    </div>
-                    <div><i class="fas fa-users fa-2x text-muted opacity-50"></i></div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card shadow-sm border-0 border-start border-success border-4 py-2">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-xs fw-bold text-success text-uppercase mb-1">Active Exams</div>
-                        <div class="h5 mb-0 fw-bold">{{ active_exams }}</div>
-                    </div>
-                    <div><i class="fas fa-file-alt fa-2x text-muted opacity-50"></i></div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card shadow-sm border-0 border-start border-warning border-4 py-2">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-xs fw-bold text-warning text-uppercase mb-1">Attempts Today</div>
-                        <div class="h5 mb-0 fw-bold">{{ attempts_today }}</div>
-                    </div>
-                    <div><i class="fas fa-chart-line fa-2x text-muted opacity-50"></i></div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
+    <div class="col-md-4">
         <div class="card shadow-sm border-0 border-start border-danger border-4 py-2">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <div class="text-xs fw-bold text-danger text-uppercase mb-1">{% if is_global_analytics %}Global Exams{% else %}My Exams{% endif %}</div>
+                        <div class="text-xs fw-bold text-danger text-uppercase mb-1">My Exams</div>
                         <div class="h5 mb-0 fw-bold">{{ managed_exam_count }}</div>
                     </div>
                     <div><i class="fas fa-check-circle fa-2x text-muted opacity-50"></i></div>
@@ -61,7 +22,8 @@
         <div class="card shadow-sm p-4 h-100">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h6 class="mb-0 fw-bold text-primary">Exam Visibility</h6>
-                <span class="small text-muted">{% if is_global_analytics %}Admin graph across all exams{% else %}Based on your exams{% endif %}</span>
+                <span class="small text-muted">{% if is_global_analytics %}Admin graph across all exams{% else %}Based
+                    on your exams{% endif %}</span>
             </div>
             <canvas id="visibilityChart" style="max-height: 240px;"></canvas>
         </div>
@@ -69,7 +31,8 @@
     <div class="col-lg-6">
         <div class="card shadow-sm p-4 h-100">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="mb-0 fw-bold text-primary">{% if is_global_analytics %}Exam Activity{% else %}My Exam Activity{% endif %}</h6>
+                <h6 class="mb-0 fw-bold text-primary">{% if is_global_analytics %}Exam Activity{% else %}My Exam
+                    Activity{% endif %}</h6>
                 <span class="badge bg-danger">{{ pass_rate|floatformat:1 }}% pass rate</span>
             </div>
             <canvas id="typeChart" style="max-height: 240px;"></canvas>
@@ -84,7 +47,7 @@
                 <h6 class="m-0 fw-bold text-primary">Recent Activity</h6>
             </div>
             <div class="card-body">
-                <div class="table-responsive">
+                <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
                     <table class="table table-bordered table-hover align-middle mb-0">
                         <thead>
                             <tr>
@@ -127,7 +90,7 @@
                 <h6 class="m-0 fw-bold text-primary">Recently Created Exams</h6>
             </div>
             <div class="card-body">
-                <div class="list-group list-group-flush">
+                <div class="list-group list-group-flush" style="max-height: 250px; overflow-y: auto;">
                     {% for exam in recent_exams %}
                     <div class="list-group-item px-0 d-flex justify-content-between align-items-start">
                         <div>
@@ -157,32 +120,32 @@
                     labels: ["Public", "Private"],
                     datasets: [{
                         data: [{{ exams_by_visibility.public }}, {{ exams_by_visibility.private }}],
-                        backgroundColor: ["#198754", "#212529"]
-                    }]
+                backgroundColor: ["#198754", "#212529"]
+            }]
                 },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
+        options: { responsive: true, maintainAspectRatio: false }
+    });
         }
 
-        const typeCtx = document.getElementById("typeChart");
-        if (typeCtx) {
-            new Chart(typeCtx, {
-                type: "bar",
-                data: {
-                    labels: [{% for item in exam_activity %}"{{ item.title|truncatechars:20 }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
-                    datasets: [{
-                        label: "Attempts",
-                        data: [{% for item in exam_activity %}{{ item.total_attempts }}{% if not forloop.last %}, {% endif %}{% endfor %}],
-                        backgroundColor: "#1a1f5e"
+    const typeCtx = document.getElementById("typeChart");
+    if (typeCtx) {
+        new Chart(typeCtx, {
+            type: "bar",
+            data: {
+                labels: [{% for item in exam_activity %}"{{ item.title|truncatechars:20 }}"{% if not forloop.last %}, {% endif %} {% endfor %}],
+    datasets: [{
+        label: "Attempts",
+        data: [{% for item in exam_activity %}{{ item.total_attempts }}{% if not forloop.last %}, {% endif %} {% endfor %}],
+    backgroundColor: "#1a1f5e"
                     }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: { beginAtZero: true, ticks: { precision: 0 } }
-                    }
-                }
+    options: {
+        responsive: true,
+            maintainAspectRatio: false,
+                scales: {
+            y: { beginAtZero: true, ticks: { precision: 0 } }
+        }
+    }
             });
         }
     });

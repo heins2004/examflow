@@ -12,6 +12,22 @@
             <i class="fas fa-plus"></i> Add Question
         </a>
     </div>
+    <div class="card-body border-bottom bg-light">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="fw-semibold">Total marks target</div>
+                <div class="small text-muted">{{ exam.total_marks }} marks</div>
+            </div>
+            <div class="col-md-4">
+                <div class="fw-semibold">Marks allocated</div>
+                <div class="small text-muted">{{ allocated_marks }} marks</div>
+            </div>
+            <div class="col-md-4">
+                <div class="fw-semibold">Marks remaining</div>
+                <div class="small {% if remaining_marks == 0 %}text-success{% else %}text-danger{% endif %}">{{ remaining_marks }} marks left</div>
+            </div>
+        </div>
+    </div>
     <div class="card-body p-0">
         {% if not questions %}
         <div class="p-4 border-bottom bg-light">

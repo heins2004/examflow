@@ -6,6 +6,13 @@
 {% block content %}
 <div class="card shadow-sm">
     <div class="card-body">
+        <div class="alert alert-light border mb-4">
+            <div class="d-flex justify-content-between flex-wrap gap-3">
+                <div>Total exam marks: <strong>{{ current_exam.total_marks }}</strong></div>
+                <div>Already allocated: <strong>{{ allocated_marks }}</strong></div>
+                <div id="remainingMarksText">Marks needed to reach total: <strong>{{ remaining_marks }}</strong></div>
+            </div>
+        </div>
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
 
@@ -82,10 +89,10 @@
             </div>
 
             <div class="mt-4">
-                <a href="{% url 'dashboard_questions' exam_id=current_exam.id %}"
-                    class="btn btn-secondary">Cancel</a>
+                <a href="{% url 'dashboard_questions' exam_id=current_exam.id %}" class="btn btn-secondary">Cancel</a>
                 {% if not object %}
-                <button type="submit" name="save_add_another" value="1" class="btn btn-outline-primary">Save and Add Another</button>
+                <button type="submit" name="save_add_another" value="1" class="btn btn-outline-primary">Save and Add
+                    Another</button>
                 {% endif %}
                 <button type="submit" class="btn btn-primary">Save Question</button>
             </div>
@@ -145,22 +152,45 @@
         const answerSetupCard = document.getElementById("answerSetupCard");
         const questionTypeInputs = document.querySelectorAll('input[name="question_type"]');
         const panels = document.querySelectorAll("[data-question-panel]");
+        const marksInput = document.getElementById("id_marks");
+        const remainingMarksText = document.getElementById("remainingMarksText");
+        const baseRemainingMarks = {{ remaining_marks|default: 0
+    }};
+    const isEditing = {% if object %}true{% else %} false{% endif %};
+    const currentMarks = {{ object.marks|default: 0 }};
 
-        function syncQuestionTypePanels() {
-            const selected = document.querySelector('input[name="question_type"]:checked');
-            const selectedValue = selected ? selected.value : "";
+    function syncQuestionTypePanels() {
+        const selected = document.querySelector('input[name="question_type"]:checked');
+        const selectedValue = selected ? selected.value : "";
 
-            answerSetupCard.classList.toggle("d-none", !selectedValue);
-            panels.forEach((panel) => {
-                panel.classList.toggle("d-none", panel.dataset.questionPanel !== selectedValue);
-            });
-        }
-
-        questionTypeInputs.forEach((input) => {
-            input.addEventListener("change", syncQuestionTypePanels);
+        answerSetupCard.classList.toggle("d-none", !selectedValue);
+        panels.forEach((panel) => {
+            panel.classList.toggle("d-none", panel.dataset.questionPanel !== selectedValue);
         });
+    }
 
-        syncQuestionTypePanels();
+    function syncRemainingMarks() {
+        if (!marksInput || !remainingMarksText) {
+            return;
+        }
+        const enteredMarks = Number(marksInput.value || 0);
+        const remainingAfterSave = isEditing
+            ? baseRemainingMarks + currentMarks - enteredMarks
+            : baseRemainingMarks - enteredMarks;
+        remainingMarksText.innerHTML = `Marks needed to reach total: <strong>${remainingAfterSave}</strong>`;
+        remainingMarksText.classList.toggle("text-danger", remainingAfterSave < 0);
+        remainingMarksText.classList.toggle("text-success", remainingAfterSave >= 0);
+    }
+
+    questionTypeInputs.forEach((input) => {
+        input.addEventListener("change", syncQuestionTypePanels);
+    });
+    if (marksInput) {
+        marksInput.addEventListener("input", syncRemainingMarks);
+    }
+
+    syncQuestionTypePanels();
+    syncRemainingMarks();
     });
 </script>
 {% endblock %}

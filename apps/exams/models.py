@@ -23,12 +23,17 @@ class Exam(models.Model):
         ('CERTIFICATION', 'Certification'),
         ('COMPETITIVE', 'Competitive'),
     )
+    CERTIFICATE_TEMPLATE_CHOICES = tuple(
+        (f'TEMPLATE_{index}', f'Template {index}')
+        for index in range(1, 11)
+    )
     title = models.CharField(max_length=200)
     slug = models.SlugField(unique=True)
     description = models.TextField()
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='exams')
     exam_type = models.CharField(max_length=50, choices=EXAM_TYPE_CHOICES)
-    duration_minutes = models.PositiveIntegerField()
+    duration_minutes = models.PositiveIntegerField(null=True, blank=True)
+    is_unlimited_time = models.BooleanField(default=False)
     total_marks = models.PositiveIntegerField()
     pass_marks = models.PositiveIntegerField()
     shuffle_questions = models.BooleanField(default=False)
@@ -36,7 +41,9 @@ class Exam(models.Model):
     allow_review = models.BooleanField(default=True)
     show_result_immediately = models.BooleanField(default=True)
     max_attempts = models.PositiveIntegerField(default=1)
+    one_attempt_only = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+    is_released = models.BooleanField(default=False)
     visibility = models.CharField(max_length=20, choices=VISIBILITY_CHOICES, default='PUBLIC')
     exam_code = models.CharField(max_length=20, unique=True, blank=True, null=True)
     access_code = models.CharField(max_length=20, blank=True, null=True)
@@ -45,6 +52,16 @@ class Exam(models.Model):
     end_time = models.DateTimeField(null=True, blank=True)
     thumbnail = models.ImageField(upload_to='exam_thumbnails/', null=True, blank=True)
     instructions = models.TextField(blank=True, null=True)
+    certificate_template = models.CharField(
+        max_length=20,
+        choices=CERTIFICATE_TEMPLATE_CHOICES,
+        default='TEMPLATE_1',
+    )
+    certificate_template_upload = models.ImageField(
+        upload_to='certificate_templates/',
+        null=True,
+        blank=True,
+    )
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='created_exams')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -55,6 +72,10 @@ class Exam(models.Model):
     def save(self, *args, **kwargs):
         if not self.exam_code:
             self.exam_code = self._generate_unique_code('EXM')
+        self.exam_code = (self.exam_code or '').upper()
+        self.access_code = self.exam_code
+        if self.is_unlimited_time:
+            self.duration_minutes = None
         super().save(*args, **kwargs)
 
     def _generate_unique_code(self, prefix):
@@ -70,6 +91,16 @@ class Exam(models.Model):
     @property
     def requires_pass_key(self):
         return bool(self.pass_key)
+
+    @property
+    def duration_label(self):
+        if self.is_unlimited_time or not self.duration_minutes:
+            return 'Unlimited'
+        return f'{self.duration_minutes}m'
+
+    @property
+    def is_certification(self):
+        return self.exam_type == 'CERTIFICATION'
 
 class Question(models.Model):
     QUESTION_TYPE_CHOICES = (

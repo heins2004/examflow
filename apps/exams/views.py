@@ -1,4 +1,5 @@
 import json
+import csv
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponse
@@ -10,6 +11,12 @@ from django.db.models import Count
 
 
 def can_view_exam(user, exam):
+    if exam.is_released is False:
+        if not user.is_authenticated:
+            return False
+        if user == exam.created_by or user.role == User.Role.ADMIN or user.is_superuser:
+            return True
+        return False
     if exam.visibility == 'PUBLIC':
         return True
     if not user.is_authenticated:
@@ -32,8 +39,15 @@ def has_unlocked_pass_key(request, exam):
     return request.session.get(f"exam-passkey-{exam.id}") is True or not exam.requires_pass_key
 
 
+def get_completed_attempts_queryset(user, exam):
+    attempts = ExamAttempt.objects.filter(user=user, exam=exam).exclude(status='IN_PROGRESS')
+    if exam.one_attempt_only:
+        return attempts
+    return attempts.filter(started_at__date=timezone.localdate())
+
+
 def exam_list(request):
-    exams = Exam.objects.filter(is_active=True, visibility='PUBLIC').order_by('-created_at')
+    exams = Exam.objects.filter(is_active=True, is_released=True, visibility='PUBLIC').order_by('-created_at')
     categories = Category.objects.order_by('name')
     
     cat_slug = request.GET.get('category')
@@ -56,13 +70,10 @@ def exam_join_by_code(request):
     joined_exam = None
     if request.method == 'POST':
         exam_code = (request.POST.get('exam_code') or '').strip().upper()
-        access_code = (request.POST.get('access_code') or '').strip().upper()
 
-        exam = Exam.objects.filter(exam_code=exam_code, is_active=True).first()
+        exam = Exam.objects.filter(exam_code=exam_code, is_active=True, is_released=True).first()
         if not exam:
             messages.error(request, "No exam was found for that exam code.")
-        elif exam.visibility == 'PRIVATE' and exam.access_code and exam.access_code != access_code:
-            messages.error(request, "That private exam code is invalid.")
         else:
             ExamAccess.objects.get_or_create(user=request.user, exam=exam)
             joined_exam = exam
@@ -74,7 +85,7 @@ def exam_join_by_code(request):
 def exam_detail(request, slug):
     exam = get_object_or_404(Exam, slug=slug, is_active=True)
     if not can_view_exam(request.user, exam):
-        messages.warning(request, "This is a private exam. Enter its exam code first.")
+        messages.warning(request, "This exam is not publicly available yet. Use the released exam code or wait for the examiner to release it.")
         return redirect('exam_join')
 
     pass_key_unlocked = has_unlocked_pass_key(request, exam)
@@ -96,7 +107,7 @@ def exam_detail(request, slug):
     if request.user.is_authenticated:
         attempt_qs = ExamAttempt.objects.filter(user=request.user, exam=exam)
         user_attempts = attempt_qs.count()
-        completed_attempts = attempt_qs.exclude(status='IN_PROGRESS').count()
+        completed_attempts = get_completed_attempts_queryset(request.user, exam).count()
         in_progress_attempt = attempt_qs.filter(status='IN_PROGRESS').first()
         
     return render(request, 'exams/exam_detail.html', {
@@ -104,7 +115,7 @@ def exam_detail(request, slug):
         'user_attempts': user_attempts,
         'completed_attempts': completed_attempts,
         'in_progress_attempt': in_progress_attempt,
-        'can_attempt': completed_attempts < exam.max_attempts if exam.max_attempts > 0 else True,
+        'can_attempt': completed_attempts < exam.max_attempts if (exam.max_attempts > 0 and not exam.one_attempt_only) else completed_attempts < 1 if exam.one_attempt_only else True,
         'has_questions': exam.questions.exists(),
         'pass_key_unlocked': pass_key_unlocked,
         'availability_ok': availability_ok,
@@ -139,8 +150,9 @@ def exam_start(request, slug):
         messages.error(request, "This exam has no questions yet.")
         return redirect('exam_detail', slug=slug)
 
-    completed_attempts = ExamAttempt.objects.filter(user=request.user, exam=exam).exclude(status='IN_PROGRESS').count()
-    if exam.max_attempts > 0 and completed_attempts >= exam.max_attempts:
+    completed_attempts = get_completed_attempts_queryset(request.user, exam).count()
+    limit_reached = completed_attempts >= 1 if exam.one_attempt_only else exam.max_attempts > 0 and completed_attempts >= exam.max_attempts
+    if limit_reached:
         messages.error(request, "You have reached the maximum number of attempts for this exam.")
         return redirect('exam_detail', slug=slug)
         
@@ -161,10 +173,12 @@ def exam_attempt(request, slug, id):
         
     # Calculate remaining time
     time_elapsed = (timezone.now() - attempt.started_at).total_seconds()
-    time_remaining_seconds = max(0, (exam.duration_minutes * 60) - time_elapsed)
-    
-    if time_remaining_seconds <= 0:
-        return submit_exam_logic(attempt)
+    if exam.is_unlimited_time or not exam.duration_minutes:
+        time_remaining_seconds = None
+    else:
+        time_remaining_seconds = max(0, (exam.duration_minutes * 60) - time_elapsed)
+        if time_remaining_seconds <= 0:
+            return submit_exam_logic(attempt)
         
     if request.method == 'POST':
         if 'ajax' in request.POST or request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
@@ -220,8 +234,11 @@ def submit_exam_logic(attempt):
     attempt.status = 'SUBMITTED'
     attempt.submitted_at = timezone.now()
     time_taken = (attempt.submitted_at - attempt.started_at).total_seconds()
-    exam_duration_sec = attempt.exam.duration_minutes * 60
-    attempt.time_taken_seconds = min(time_taken, exam_duration_sec)
+    if attempt.exam.is_unlimited_time or not attempt.exam.duration_minutes:
+        attempt.time_taken_seconds = int(time_taken)
+    else:
+        exam_duration_sec = attempt.exam.duration_minutes * 60
+        attempt.time_taken_seconds = min(time_taken, exam_duration_sec)
     
     total_score = 0
     questions = attempt.exam.questions.all()
@@ -331,37 +348,61 @@ def exam_leaderboard(request, slug):
 def exam_certificate(request, slug, id):
     exam = get_object_or_404(Exam, slug=slug)
     attempt = get_object_or_404(ExamAttempt, id=id, user=request.user, exam=exam)
-    
+
+    if not exam.is_certification:
+        messages.error(request, 'Certificates are only available for certification exams.')
+        return redirect('exam_result', slug=slug, id=id)
+
     if not attempt.is_passed or attempt.status != 'SUBMITTED':
         messages.error(request, 'You need to pass the exam to download the certificate.')
         return redirect('exam_result', slug=slug, id=id)
 
     from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import landscape, letter
+    from reportlab.lib.utils import ImageReader
     import io
-    
+
+    style_map = {
+        'TEMPLATE_1': ((0.10, 0.12, 0.36), (0.42, 0.38, 1.00), "CERTIFICATE OF COMPLETION"),
+        'TEMPLATE_2': ((0.09, 0.27, 0.20), (0.90, 0.58, 0.13), "ACHIEVEMENT CERTIFICATE"),
+        'TEMPLATE_3': ((0.27, 0.15, 0.08), (0.82, 0.46, 0.18), "CERTIFIED SUCCESS"),
+        'TEMPLATE_4': ((0.14, 0.18, 0.31), (0.19, 0.65, 0.75), "MERIT CERTIFICATE"),
+        'TEMPLATE_5': ((0.25, 0.11, 0.27), (0.76, 0.29, 0.58), "CERTIFICATE OF MERIT"),
+        'TEMPLATE_6': ((0.22, 0.22, 0.22), (0.93, 0.64, 0.18), "EXCELLENCE AWARD"),
+        'TEMPLATE_7': ((0.07, 0.26, 0.39), (0.27, 0.72, 0.65), "PROFICIENCY CERTIFICATE"),
+        'TEMPLATE_8': ((0.31, 0.13, 0.17), (0.88, 0.31, 0.24), "CERTIFIED COMPLETION"),
+        'TEMPLATE_9': ((0.10, 0.32, 0.16), (0.54, 0.73, 0.22), "DISTINCTION CERTIFICATE"),
+        'TEMPLATE_10': ((0.17, 0.11, 0.37), (0.34, 0.50, 0.95), "CERTIFICATE OF ACHIEVEMENT"),
+    }
+    bg_color, accent_color, heading = style_map.get(exam.certificate_template, style_map['TEMPLATE_1'])
+
     buffer = io.BytesIO()
     p = canvas.Canvas(buffer, pagesize=landscape(letter))
     width, height = landscape(letter)
 
-    p.setFillColorRGB(0.1, 0.12, 0.36)
-    p.rect(0, 0, width, height, stroke=0, fill=1)
-    
-    p.setFillColorRGB(1, 1, 1)
-    p.rect(20, 20, width-40, height-40, stroke=1, fill=1)
+    if exam.certificate_template_upload:
+        p.drawImage(ImageReader(exam.certificate_template_upload.path), 0, 0, width=width, height=height)
+        p.setFillColorRGB(1, 1, 1)
+        p.setStrokeColorRGB(*bg_color)
+        p.rect(28, 28, width - 56, height - 56, stroke=1, fill=0)
+    else:
+        p.setFillColorRGB(*bg_color)
+        p.rect(0, 0, width, height, stroke=0, fill=1)
+        p.setFillColorRGB(1, 1, 1)
+        p.rect(20, 20, width-40, height-40, stroke=1, fill=1)
 
-    p.setFillColorRGB(0.1, 0.12, 0.36)
+    p.setFillColorRGB(*bg_color)
     p.setFont("Helvetica-Bold", 40)
-    p.drawCentredString(width/2.0, height-100, "CERTIFICATE OF COMPLETION")
+    p.drawCentredString(width/2.0, height-100, heading)
 
     p.setFont("Helvetica", 20)
     p.drawCentredString(width/2.0, height-160, "This is to certify that")
 
     p.setFont("Helvetica-Bold", 30)
-    p.setFillColorRGB(0.42, 0.38, 1)
+    p.setFillColorRGB(*accent_color)
     p.drawCentredString(width/2.0, height-210, attempt.user.get_full_name() or attempt.user.username)
 
-    p.setFillColorRGB(0.1, 0.12, 0.36)
+    p.setFillColorRGB(*bg_color)
     p.setFont("Helvetica", 20)
     p.drawCentredString(width/2.0, height-270, "has successfully completed the exam")
 

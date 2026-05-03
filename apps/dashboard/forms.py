@@ -11,13 +11,12 @@ from .models import CategoryRequest
 
 class ExamForm(BootstrapFormMixin, forms.ModelForm):
     slug = forms.SlugField(required=False, help_text="Leave blank to generate automatically.")
-    exam_code = forms.CharField(required=False, help_text="Leave blank to generate automatically.")
-    access_code = forms.CharField(required=False, help_text="Required only for private exams.")
+    exam_code = forms.CharField(required=False, help_text="Generated automatically and used for both public and private exam access.")
     pass_key = forms.CharField(required=False, help_text="Optional student pass key shared by the examiner.")
 
     class Meta:
         model = Exam
-        exclude = ("created_by",)
+        exclude = ("created_by", "access_code")
         widgets = {
             "start_time": forms.DateTimeInput(attrs={"type": "datetime-local"}),
             "end_time": forms.DateTimeInput(attrs={"type": "datetime-local"}),
@@ -51,14 +50,22 @@ class ExamForm(BootstrapFormMixin, forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        visibility = cleaned_data.get("visibility")
-        access_code = (cleaned_data.get("access_code") or "").strip().upper()
+        duration_minutes = cleaned_data.get("duration_minutes")
+        is_unlimited_time = cleaned_data.get("is_unlimited_time")
         pass_key = (cleaned_data.get("pass_key") or "").strip().upper()
+        exam_type = cleaned_data.get("exam_type")
+        certificate_template_upload = cleaned_data.get("certificate_template_upload")
 
-        if visibility == "PRIVATE" and not access_code:
-            self.add_error("access_code", "Private exams require an access code.")
+        if not is_unlimited_time and not duration_minutes:
+            self.add_error("duration_minutes", "Enter a duration or enable unlimited time.")
 
-        cleaned_data["access_code"] = access_code
+        if is_unlimited_time:
+            cleaned_data["duration_minutes"] = None
+
+        if exam_type != "CERTIFICATION" and certificate_template_upload:
+            self.add_error("certificate_template_upload", "Certificate templates are only used for certification exams.")
+
+        exam_code = (cleaned_data.get("exam_code") or "").strip().upper()
         cleaned_data["pass_key"] = pass_key
         return cleaned_data
 

@@ -7,11 +7,73 @@
 <div class="card shadow-sm">
     <div class="card-body">
         <div class="alert alert-light border mb-4">
-            Public exams appear in the marketplace. Private exams require an access code, and the optional pass key is what students use to unlock the attempt before starting.
+            Exams stay hidden until you release them. The system generates one exam code automatically and uses it for
+            both public and private access. Certification exams unlock certificate templates and require paid examiner
+            access.
         </div>
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
-            {{ form|crispy }}
+            {{ form.non_field_errors }}
+
+            <div class="row">
+                <div class="col-md-8">{{ form.title|crispy }}</div>
+                <div class="col-md-4">{{ form.slug|crispy }}</div>
+            </div>
+
+            {{ form.description|crispy }}
+
+            <div class="row">
+                <div class="col-md-4">{{ form.category|crispy }}</div>
+                <div class="col-md-4">{{ form.exam_type|crispy }}</div>
+                <div class="col-md-4">{{ form.visibility|crispy }}</div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-12">{{ form.exam_code|crispy }}</div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-3">{{ form.total_marks|crispy }}</div>
+                <div class="col-md-3">{{ form.pass_marks|crispy }}</div>
+                <div class="col-md-3">{{ form.max_attempts|crispy }}</div>
+                <div class="col-md-3">{{ form.duration_minutes|crispy }}</div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4">{{ form.is_unlimited_time|crispy }}</div>
+                <div class="col-md-4">{{ form.one_attempt_only|crispy }}</div>
+                <div class="col-md-4">{{ form.is_active|crispy }}</div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">{{ form.start_time|crispy }}</div>
+                <div class="col-md-6">{{ form.end_time|crispy }}</div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">{{ form.pass_key|crispy }}</div>
+                <div class="col-md-6">{{ form.thumbnail|crispy }}</div>
+            </div>
+
+            <div id="certificateFields" class="border rounded p-3 mb-3">
+                <div class="fw-semibold mb-2">Certification settings</div>
+                <div class="row">
+                    <div class="col-md-6">{{ form.certificate_template|crispy }}</div>
+                    <div class="col-md-6">{{ form.certificate_template_upload|crispy }}</div>
+                </div>
+                <div class="small text-muted">Students can download certificates only for certification exams after
+                    passing.</div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">{{ form.instructions|crispy }}</div>
+                <div class="col-md-6">
+                    {{ form.shuffle_questions|crispy }}
+                    {{ form.shuffle_options|crispy }}
+                    {{ form.allow_review|crispy }}
+                    {{ form.show_result_immediately|crispy }}
+                </div>
+            </div>
             <div class="mt-4">
                 <a href="{% url 'dashboard_exams' %}" class="btn btn-secondary">Cancel</a>
                 <button type="submit" class="btn btn-primary">Save Exam</button>
@@ -19,4 +81,32 @@
         </form>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const examType = document.getElementById("id_exam_type");
+        const durationField = document.getElementById("div_id_duration_minutes");
+        const unlimitedField = document.getElementById("id_is_unlimited_time");
+        const certFields = document.getElementById("certificateFields");
+        const durationInput = document.getElementById("id_duration_minutes");
+
+        function syncExamFormState() {
+            const isCertification = examType && examType.value === "CERTIFICATION";
+            const isUnlimited = unlimitedField && unlimitedField.checked;
+            certFields.classList.toggle("d-none", !isCertification);
+            durationInput.disabled = !!isUnlimited;
+            durationField.classList.toggle("opacity-50", !!isUnlimited);
+        }
+
+        if (examType) {
+            examType.addEventListener("change", syncExamFormState);
+        }
+        if (unlimitedField) {
+            unlimitedField.addEventListener("change", syncExamFormState);
+        }
+        syncExamFormState();
+    });
+</script>
 {% endblock %}

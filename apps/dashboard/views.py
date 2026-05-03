@@ -1,6 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.http import HttpResponse
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, UpdateView, DeleteView
 from django.utils.decorators import method_decorator
@@ -16,8 +17,9 @@ from .forms import (
     QuestionForm,
 )
 from .models import CategoryRequest
-from django.db.models import Count
+from django.db.models import Count, Sum
 from django.utils import timezone
+import csv
 
 
 def has_dashboard_access(user):
@@ -58,9 +60,6 @@ def analytics_exams_for(user):
 
 def build_dashboard_home_context(user, manageable_exams, analytics_exams, is_global_analytics):
     attempts = ExamAttempt.objects.filter(exam__in=analytics_exams)
-    total_users = User.objects.count()
-    active_exams = analytics_exams.filter(is_active=True).count()
-    attempts_today = attempts.filter(started_at__date=timezone.now().date()).count()
     completed_attempts = attempts.filter(status='SUBMITTED')
     total_completed = completed_attempts.count()
     pass_rate = 0
@@ -77,9 +76,9 @@ def build_dashboard_home_context(user, manageable_exams, analytics_exams, is_glo
     recent_exams = manageable_exams.order_by('-created_at')[:5]
 
     return {
-        'total_users': total_users,
-        'active_exams': active_exams,
-        'attempts_today': attempts_today,
+        'total_users': User.objects.count() if is_global_analytics else None,
+        'active_exams': analytics_exams.filter(is_active=True).count() if is_global_analytics else None,
+        'attempts_today': attempts.filter(started_at__date=timezone.now().date()).count() if is_global_analytics else None,
         'pass_rate': pass_rate,
         'recent_attempts': attempts.order_by('-started_at')[:5],
         'recent_exams': recent_exams,
@@ -145,6 +144,65 @@ def admin_dashboard_exams(request):
     return render(request, 'admin_dashboard/exams.html', {
         'exams': exams,
     })
+
+
+@login_required
+@dashboard_access_required
+def dashboard_exam_release(request, pk):
+    if request.method != 'POST':
+        return redirect('dashboard_exams')
+    exam = get_manageable_exam_or_404(request.user, pk=pk)
+    exam.is_released = True
+    exam.save(update_fields=['is_released', 'updated_at'])
+    messages.success(request, "Exam released. It is now available to students.")
+    return redirect('dashboard_exams')
+
+
+@login_required
+@dashboard_access_required
+def dashboard_exam_attendees(request, exam_id):
+    exam = get_manageable_exam_or_404(request.user, pk=exam_id)
+    attempts = exam.attempts.select_related('user').order_by('-started_at')
+    return render(request, 'dashboard/exam_attendees.html', {
+        'exam': exam,
+        'attempts': attempts,
+    })
+
+
+@login_required
+@dashboard_access_required
+def dashboard_exam_attendees_export(request, exam_id):
+    exam = get_manageable_exam_or_404(request.user, pk=exam_id)
+    attempts = exam.attempts.select_related('user').order_by('-started_at')
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename=\"{exam.slug}-attendees.csv\"'
+    writer = csv.writer(response)
+    writer.writerow([
+        'Student',
+        'Email',
+        'Attempt Number',
+        'Status',
+        'Score',
+        'Percentage',
+        'Passed',
+        'Started At',
+        'Submitted At',
+        'Time Taken Seconds',
+    ])
+    for attempt in attempts:
+        writer.writerow([
+            attempt.user.get_full_name() or attempt.user.username,
+            attempt.user.email,
+            attempt.attempt_number,
+            attempt.status,
+            attempt.score,
+            attempt.percentage,
+            'Yes' if attempt.is_passed else 'No',
+            timezone.localtime(attempt.started_at).strftime('%Y-%m-%d %H:%M:%S'),
+            timezone.localtime(attempt.submitted_at).strftime('%Y-%m-%d %H:%M:%S') if attempt.submitted_at else '',
+            attempt.time_taken_seconds,
+        ])
+    return response
 
 @login_required
 @dashboard_access_required
@@ -275,9 +333,12 @@ class DashboardUserUpdateView(UpdateView):
 def dashboard_questions(request, exam_id):
     exam = get_manageable_exam_or_404(request.user, pk=exam_id)
     questions = exam.questions.prefetch_related('options').all()
+    allocated_marks = questions.aggregate(total=Sum('marks'))['total'] or 0
     return render(request, 'dashboard/questions.html', {
         'exam': exam,
         'questions': questions,
+        'allocated_marks': allocated_marks,
+        'remaining_marks': max(0, exam.total_marks - allocated_marks),
     })
 
 
@@ -287,8 +348,12 @@ class ExamCreateView(CreateView):
     form_class = ExamForm
     template_name = 'dashboard/exam_form.html'
     def form_valid(self, form):
-        if self.request.user.role == User.Role.EXAMINER and not self.request.user.can_manage_paid_exams:
-            form.add_error(None, "Your demo examiner payment must be completed before creating exams.")
+        if (
+            form.cleaned_data.get('exam_type') == 'CERTIFICATION'
+            and self.request.user.role == User.Role.EXAMINER
+            and not self.request.user.can_manage_paid_exams
+        ):
+            form.add_error(None, "Demo payment must be completed before creating certification exams.")
             return self.form_invalid(form)
         form.instance.created_by = self.request.user
         return super().form_valid(form)
@@ -307,6 +372,16 @@ class ExamUpdateView(UpdateView):
 
     def get_queryset(self):
         return manageable_exams_for(self.request.user)
+
+    def form_valid(self, form):
+        if (
+            form.cleaned_data.get('exam_type') == 'CERTIFICATION'
+            and self.request.user.role == User.Role.EXAMINER
+            and not self.request.user.can_manage_paid_exams
+        ):
+            form.add_error(None, "Demo payment must be completed before creating certification exams.")
+            return self.form_invalid(form)
+        return super().form_valid(form)
 
     def get_success_url(self):
         messages.success(self.request, "Exam updated.")
@@ -366,7 +441,11 @@ class QuestionCreateView(CreateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['current_exam'] = get_manageable_exam_or_404(self.request.user, pk=self.kwargs['exam_id'])
+        current_exam = get_manageable_exam_or_404(self.request.user, pk=self.kwargs['exam_id'])
+        allocated_marks = current_exam.questions.aggregate(total=Sum('marks'))['total'] or 0
+        context['current_exam'] = current_exam
+        context['allocated_marks'] = allocated_marks
+        context['remaining_marks'] = max(0, current_exam.total_marks - allocated_marks)
         return context
 
     def get_success_url(self):
@@ -394,6 +473,9 @@ class QuestionUpdateView(UpdateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['current_exam'] = self.object.exam
+        allocated_marks = self.object.exam.questions.exclude(pk=self.object.pk).aggregate(total=Sum('marks'))['total'] or 0
+        context['allocated_marks'] = allocated_marks
+        context['remaining_marks'] = max(0, self.object.exam.total_marks - allocated_marks)
         return context
 
     def get_success_url(self):

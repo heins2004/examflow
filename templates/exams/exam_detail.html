@@ -32,11 +32,12 @@
         <div class="d-flex flex-wrap gap-2 mb-4">
             <span class="badge {% if exam.visibility == 'PUBLIC' %}bg-success{% else %}bg-dark{% endif %}">{{ exam.get_visibility_display }}</span>
             <span class="badge bg-secondary">Exam code: {{ exam.exam_code }}</span>
+            <span class="badge {% if exam.is_released %}bg-success{% else %}bg-warning text-dark{% endif %}">{% if exam.is_released %}Released{% else %}Not released{% endif %}</span>
             {% if exam.requires_pass_key %}
             <span class="badge bg-warning text-dark">Pass key required</span>
             {% endif %}
-            {% if exam.requires_access_code %}
-            <span class="badge bg-info text-dark">Private access code required</span>
+            {% if exam.is_certification %}
+            <span class="badge bg-info text-dark">Certification exam</span>
             {% endif %}
         </div>
 
@@ -44,8 +45,8 @@
             <div class="col-6 col-lg-3">
                 <div class="stat-tile text-center h-100">
                     <i class="fas fa-clock fa-lg text-primary mb-2"></i>
-                    <h5 class="mb-1">{{ exam.duration_minutes }}</h5>
-                    <small class="text-muted">Minutes</small>
+                    <h5 class="mb-1">{{ exam.duration_label }}</h5>
+                    <small class="text-muted">Duration</small>
                 </div>
             </div>
             <div class="col-6 col-lg-3">
@@ -105,12 +106,13 @@
         <span class="section-label mb-3"><i class="fas fa-play"></i> Ready to begin</span>
         <div class="info-banner mb-4">
             <div class="fw-semibold text-dark mb-2">Attempt summary</div>
-            <div class="small text-muted d-grid gap-2">
-                <div>Your attempts: {{ user_attempts }} / {% if exam.max_attempts > 0 %}{{ exam.max_attempts }}{% else %}Unlimited{% endif %}</div>
-                <div>Questions available: {% if has_questions %}Yes{% else %}No{% endif %}</div>
-                <div>Access window: {% if availability_ok %}Open{% else %}Unavailable{% endif %}</div>
+                <div class="small text-muted d-grid gap-2">
+                    <div>Your attempts used: {{ completed_attempts }}</div>
+                    <div>Attempt rule: {% if exam.one_attempt_only %}Exactly one lifetime attempt{% elif exam.max_attempts > 0 %}{{ exam.max_attempts }} per day{% else %}Unlimited{% endif %}</div>
+                    <div>Questions available: {% if has_questions %}Yes{% else %}No{% endif %}</div>
+                    <div>Access window: {% if availability_ok %}Open{% else %}Unavailable{% endif %}</div>
+                </div>
             </div>
-        </div>
 
         <div class="d-grid gap-3">
             {% if user.is_authenticated %}

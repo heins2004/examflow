@@ -84,7 +84,7 @@
                 <h6 class="m-0 fw-bold text-primary">Recent Activity</h6>
             </div>
             <div class="card-body">
-                <div class="table-responsive">
+                <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
                     <table class="table table-bordered table-hover align-middle mb-0">
                         <thead>
                             <tr>
@@ -127,7 +127,7 @@
                 <h6 class="m-0 fw-bold text-primary">Recently Created Exams</h6>
             </div>
             <div class="card-body">
-                <div class="list-group list-group-flush">
+                <div class="list-group list-group-flush" style="max-height: 250px; overflow-y: auto;">
                     {% for exam in recent_exams %}
                     <div class="list-group-item px-0 d-flex justify-content-between align-items-start">
                         <div>
@@ -157,32 +157,32 @@
                     labels: ["Public", "Private"],
                     datasets: [{
                         data: [{{ exams_by_visibility.public }}, {{ exams_by_visibility.private }}],
-                        backgroundColor: ["#198754", "#212529"]
-                    }]
+                backgroundColor: ["#198754", "#212529"]
+            }]
                 },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
+        options: { responsive: true, maintainAspectRatio: false }
+    });
         }
 
-        const typeCtx = document.getElementById("typeChart");
-        if (typeCtx) {
-            new Chart(typeCtx, {
-                type: "bar",
-                data: {
-                    labels: [{% for item in exam_activity %}"{{ item.title|truncatechars:20 }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
-                    datasets: [{
-                        label: "Attempts",
-                        data: [{% for item in exam_activity %}{{ item.total_attempts }}{% if not forloop.last %}, {% endif %}{% endfor %}],
-                        backgroundColor: "#1a1f5e"
+    const typeCtx = document.getElementById("typeChart");
+    if (typeCtx) {
+        new Chart(typeCtx, {
+            type: "bar",
+            data: {
+                labels: [{% for item in exam_activity %}"{{ item.title|truncatechars:20 }}"{% if not forloop.last %}, {% endif %} {% endfor %}],
+    datasets: [{
+        label: "Attempts",
+        data: [{% for item in exam_activity %}{{ item.total_attempts }}{% if not forloop.last %}, {% endif %} {% endfor %}],
+    backgroundColor: "#1a1f5e"
                     }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: { beginAtZero: true, ticks: { precision: 0 } }
-                    }
-                }
+    options: {
+        responsive: true,
+            maintainAspectRatio: false,
+                scales: {
+            y: { beginAtZero: true, ticks: { precision: 0 } }
+        }
+    }
             });
         }
     });
