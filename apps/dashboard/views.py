@@ -71,16 +71,16 @@ def build_dashboard_home_context(user, manageable_exams, analytics_exams, is_glo
         'private': analytics_exams.filter(visibility='PRIVATE').count(),
     }
     exam_activity = list(
-        manageable_exams.annotate(total_attempts=Count('attempts')).values('title', 'total_attempts').order_by('title')
+        manageable_exams.annotate(total_attempts=Count('attempts')).values('title', 'total_attempts').order_by('-total_attempts', 'title')
     )
-    recent_exams = manageable_exams.order_by('-created_at')[:5]
+    recent_exams = manageable_exams.order_by('-created_at')
 
     return {
         'total_users': User.objects.count() if is_global_analytics else None,
         'active_exams': analytics_exams.filter(is_active=True).count() if is_global_analytics else None,
         'attempts_today': attempts.filter(started_at__date=timezone.now().date()).count() if is_global_analytics else None,
         'pass_rate': pass_rate,
-        'recent_attempts': attempts.order_by('-started_at')[:5],
+        'recent_attempts': attempts.order_by('-started_at'),
         'recent_exams': recent_exams,
         'managed_exam_count': analytics_exams.count() if is_global_analytics else manageable_exams.count(),
         'exams_by_visibility': exams_by_visibility,
@@ -338,11 +338,13 @@ def dashboard_questions(request, exam_id):
     exam = get_manageable_exam_or_404(request.user, pk=exam_id)
     questions = exam.questions.prefetch_related('options').all()
     allocated_marks = questions.aggregate(total=Sum('marks'))['total'] or 0
+    can_edit_questions = exam.created_by_id == request.user.id
     return render(request, 'dashboard/questions.html', {
         'exam': exam,
         'questions': questions,
         'allocated_marks': allocated_marks,
         'remaining_marks': max(0, exam.total_marks - allocated_marks),
+        'can_edit_questions': can_edit_questions,
     })
 
 
@@ -433,19 +435,19 @@ class QuestionCreateView(CreateView):
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs['exam_queryset'] = manageable_exams_for(self.request.user)
+        kwargs['exam_queryset'] = Exam.objects.filter(created_by=self.request.user)
         return kwargs
 
     def get_initial(self):
         initial = super().get_initial()
-        exam = get_manageable_exam_or_404(self.request.user, pk=self.kwargs['exam_id'])
+        exam = get_object_or_404(Exam, pk=self.kwargs['exam_id'], created_by=self.request.user)
         initial['exam'] = exam
         initial['order'] = (exam.questions.order_by('-order').values_list('order', flat=True).first() or 0) + 1
         return initial
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        current_exam = get_manageable_exam_or_404(self.request.user, pk=self.kwargs['exam_id'])
+        current_exam = get_object_or_404(Exam, pk=self.kwargs['exam_id'], created_by=self.request.user)
         allocated_marks = current_exam.questions.aggregate(total=Sum('marks'))['total'] or 0
         context['current_exam'] = current_exam
         context['allocated_marks'] = allocated_marks
@@ -467,11 +469,11 @@ class QuestionUpdateView(UpdateView):
     template_name = 'dashboard/question_form.html'
 
     def get_queryset(self):
-        return Question.objects.filter(exam__in=manageable_exams_for(self.request.user))
+        return Question.objects.filter(exam__created_by=self.request.user)
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs['exam_queryset'] = manageable_exams_for(self.request.user)
+        kwargs['exam_queryset'] = Exam.objects.filter(created_by=self.request.user)
         return kwargs
 
     def get_context_data(self, **kwargs):
@@ -492,7 +494,7 @@ class QuestionDeleteView(DeleteView):
     template_name = 'dashboard/confirm_delete.html'
 
     def get_queryset(self):
-        return Question.objects.filter(exam__in=manageable_exams_for(self.request.user))
+        return Question.objects.filter(exam__created_by=self.request.user)
 
     def get_success_url(self):
         return reverse_lazy('dashboard_questions', kwargs={'exam_id': self.object.exam_id})

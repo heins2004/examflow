@@ -35,7 +35,19 @@
                     Activity{% endif %}</h6>
                 <span class="badge bg-danger">{{ pass_rate|floatformat:1 }}% pass rate</span>
             </div>
-            <canvas id="typeChart" style="max-height: 240px;"></canvas>
+            <div class="list-group list-group-flush" style="max-height: 240px; overflow-y: auto;">
+                {% for item in exam_activity %}
+                <div class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                    <div class="pe-3">
+                        <div class="fw-semibold">{{ item.title }}</div>
+                        <div class="small text-muted">Attempt activity</div>
+                    </div>
+                    <span class="badge bg-primary rounded-pill">{{ item.total_attempts }}</span>
+                </div>
+                {% empty %}
+                <div class="text-center text-muted py-5">No exam activity yet.</div>
+                {% endfor %}
+            </div>
         </div>
     </div>
 </div>
@@ -47,7 +59,7 @@
                 <h6 class="m-0 fw-bold text-primary">Recent Activity</h6>
             </div>
             <div class="card-body">
-                <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                <div class="table-responsive" style="max-height: 290px; overflow-y: auto;">
                     <table class="table table-bordered table-hover align-middle mb-0">
                         <thead>
                             <tr>
@@ -125,28 +137,6 @@
                 },
         options: { responsive: true, maintainAspectRatio: false }
     });
-        }
-
-    const typeCtx = document.getElementById("typeChart");
-    if (typeCtx) {
-        new Chart(typeCtx, {
-            type: "bar",
-            data: {
-                labels: [{% for item in exam_activity %}"{{ item.title|truncatechars:20 }}"{% if not forloop.last %}, {% endif %} {% endfor %}],
-    datasets: [{
-        label: "Attempts",
-        data: [{% for item in exam_activity %}{{ item.total_attempts }}{% if not forloop.last %}, {% endif %} {% endfor %}],
-    backgroundColor: "#1a1f5e"
-                    }]
-                },
-    options: {
-        responsive: true,
-            maintainAspectRatio: false,
-                scales: {
-            y: { beginAtZero: true, ticks: { precision: 0 } }
-        }
-    }
-            });
         }
     });
 </script>

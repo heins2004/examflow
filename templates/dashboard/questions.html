@@ -8,9 +8,11 @@
             <h6 class="m-0 fw-bold text-primary">{{ exam.title }}</h6>
             <small class="text-muted">{{ questions|length }} question{{ questions|length|pluralize }}</small>
         </div>
+        {% if can_edit_questions %}
         <a href="{% url 'dashboard_question_create' exam_id=exam.id %}" class="btn btn-sm btn-primary">
             <i class="fas fa-plus"></i> Add Question
         </a>
+        {% endif %}
     </div>
     <div class="card-body border-bottom bg-light">
         <div class="row g-3">
@@ -29,6 +31,11 @@
         </div>
     </div>
     <div class="card-body p-0">
+        {% if not can_edit_questions %}
+        <div class="p-3 border-bottom bg-light small text-muted">
+            Admin view is read-only here. Only the examiner who created this exam can add, edit, or delete questions.
+        </div>
+        {% endif %}
         {% if not questions %}
         <div class="p-4 border-bottom bg-light">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
@@ -36,9 +43,11 @@
                     <div class="fw-semibold">This exam has no questions yet.</div>
                     <div class="small text-muted">Use the button on the right to add MCQ, true/false, fill in the blank, or short answer questions.</div>
                 </div>
+                {% if can_edit_questions %}
                 <a href="{% url 'dashboard_question_create' exam_id=exam.id %}" class="btn btn-primary">
                     <i class="fas fa-plus me-1"></i> Add Question
                 </a>
+                {% endif %}
             </div>
         </div>
         {% endif %}
@@ -50,9 +59,13 @@
                         <th>Question</th>
                         <th>Type</th>
                         <th>Marks</th>
+                        {% if can_edit_questions %}
                         <th>Options</th>
                         <th>Answer(s)</th>
+                        {% endif %}
+                        {% if can_edit_questions %}
                         <th class="pe-3 text-end">Actions</th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody>
@@ -62,6 +75,7 @@
                         <td class="fw-semibold">{{ question.question_text|truncatechars:70 }}</td>
                         <td>{{ question.get_question_type_display }}</td>
                         <td>{{ question.marks }}</td>
+                        {% if can_edit_questions %}
                         <td>{{ question.options.count }}</td>
                         <td class="small text-muted">
                             {% for option in question.options.all %}
@@ -80,10 +94,11 @@
                                 <i class="fas fa-trash"></i>
                             </a>
                         </td>
+                        {% endif %}
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="text-center py-4">No questions added yet.</td>
+                        <td colspan="{% if can_edit_questions %}7{% else %}4{% endif %}" class="text-center py-4">No questions added yet.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

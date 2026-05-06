@@ -9,9 +9,9 @@ class ExamPageTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.user = User.objects.create_user(username='student', password='student123')
-        cls.category = Category.objects.create(
+        cls.category, _ = Category.objects.get_or_create(
             name='Mathematics',
-            slug='mathematics',
+            defaults={'slug': 'mathematics'},
         )
         cls.exam = Exam.objects.create(
             title='Algebra Basics',
@@ -22,6 +22,7 @@ class ExamPageTests(TestCase):
             duration_minutes=30,
             total_marks=100,
             pass_marks=40,
+            is_released=True,
             created_by=cls.user,
         )
 

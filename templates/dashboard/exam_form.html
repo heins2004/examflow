@@ -8,8 +8,8 @@
     <div class="card-body">
         <div class="alert alert-light border mb-4">
             Exams stay hidden until you release them. The system generates one exam code automatically and uses it for
-            both public and private access. Certification exams unlock certificate templates and require paid examiner
-            access.
+            both public and private access. Certification exams use the built-in ExamFlow certificate style and require
+            paid examiner access.
         </div>
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
@@ -53,12 +53,9 @@
 
             <div id="certificateFields" class="border rounded p-3 mb-3">
                 <div class="fw-semibold mb-2">Certification settings</div>
-                <div class="row">
-                    <div class="col-md-6">{{ form.certificate_template|crispy }}</div>
-                    <div class="col-md-6">{{ form.certificate_template_upload|crispy }}</div>
+                <div class="small text-muted">
+                    Students can download a default ExamFlow landscape certificate after passing. No separate template upload is required.
                 </div>
-                <div class="small text-muted">Students can download certificates only for certification exams after
-                    passing.</div>
             </div>
 
             <div class="row">
@@ -96,7 +93,9 @@
         function syncExamFormState() {
             const isCertification = examType && examType.value === "CERTIFICATION";
             const isUnlimited = unlimitedField && unlimitedField.checked;
-            certFields.classList.toggle("d-none", !isCertification);
+            if (certFields) {
+                certFields.classList.toggle("d-none", !isCertification);
+            }
             durationInput.disabled = !!isUnlimited;
             durationField.classList.toggle("opacity-50", !!isUnlimited);
 

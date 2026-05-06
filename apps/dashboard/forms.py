@@ -15,7 +15,13 @@ class ExamForm(BootstrapFormMixin, forms.ModelForm):
 
     class Meta:
         model = Exam
-        exclude = ("created_by", "access_code", "exam_code")
+        exclude = (
+            "created_by",
+            "access_code",
+            "exam_code",
+            "certificate_template",
+            "certificate_template_upload",
+        )
         widgets = {
             "start_time": forms.DateTimeInput(attrs={"type": "datetime-local"}),
             "end_time": forms.DateTimeInput(attrs={"type": "datetime-local"}),
@@ -25,6 +31,8 @@ class ExamForm(BootstrapFormMixin, forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["category"].required = False
         self.fields["category"].empty_label = "No category"
+        self.fields["category"].queryset = Category.objects.order_by("name")
+        self.fields["category"].widget.attrs.update({"size": 8})
 
     def clean_slug(self):
         slug = (self.cleaned_data.get("slug") or "").strip()
@@ -47,17 +55,12 @@ class ExamForm(BootstrapFormMixin, forms.ModelForm):
         duration_minutes = cleaned_data.get("duration_minutes")
         is_unlimited_time = cleaned_data.get("is_unlimited_time")
         pass_key = (cleaned_data.get("pass_key") or "").strip().upper()
-        exam_type = cleaned_data.get("exam_type")
-        certificate_template_upload = cleaned_data.get("certificate_template_upload")
 
         if not is_unlimited_time and not duration_minutes:
             self.add_error("duration_minutes", "Enter a duration or enable unlimited time.")
 
         if is_unlimited_time:
             cleaned_data["duration_minutes"] = None
-
-        if exam_type != "CERTIFICATION" and certificate_template_upload:
-            self.add_error("certificate_template_upload", "Certificate templates are only used for certification exams.")
 
         cleaned_data["pass_key"] = pass_key
         return cleaned_data

@@ -1,5 +1,6 @@
 import json
 import csv
+import hashlib
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponse
@@ -344,6 +345,14 @@ def exam_leaderboard(request, slug):
         'top_attempts': top_attempts
     })
 
+
+def build_certificate_id(attempt):
+    student_label = attempt.user.get_full_name() or attempt.user.username
+    source = f"{attempt.exam.slug}|{student_label}|{attempt.id}"
+    digest = hashlib.sha1(source.encode("utf-8")).hexdigest()[:8].upper()
+    year = (attempt.submitted_at or timezone.now()).strftime("%Y")
+    return f"EF-{year}-{digest}"
+
 @login_required
 def exam_certificate(request, slug, id):
     exam = get_object_or_404(Exam, slug=slug)
@@ -359,66 +368,187 @@ def exam_certificate(request, slug, id):
 
     from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import landscape, letter
-    from reportlab.lib.utils import ImageReader
+    from reportlab.lib.colors import Color
     import io
-
-    style_map = {
-        'TEMPLATE_1': ((0.10, 0.12, 0.36), (0.42, 0.38, 1.00), "CERTIFICATE OF COMPLETION"),
-        'TEMPLATE_2': ((0.09, 0.27, 0.20), (0.90, 0.58, 0.13), "ACHIEVEMENT CERTIFICATE"),
-        'TEMPLATE_3': ((0.27, 0.15, 0.08), (0.82, 0.46, 0.18), "CERTIFIED SUCCESS"),
-        'TEMPLATE_4': ((0.14, 0.18, 0.31), (0.19, 0.65, 0.75), "MERIT CERTIFICATE"),
-        'TEMPLATE_5': ((0.25, 0.11, 0.27), (0.76, 0.29, 0.58), "CERTIFICATE OF MERIT"),
-        'TEMPLATE_6': ((0.22, 0.22, 0.22), (0.93, 0.64, 0.18), "EXCELLENCE AWARD"),
-        'TEMPLATE_7': ((0.07, 0.26, 0.39), (0.27, 0.72, 0.65), "PROFICIENCY CERTIFICATE"),
-        'TEMPLATE_8': ((0.31, 0.13, 0.17), (0.88, 0.31, 0.24), "CERTIFIED COMPLETION"),
-        'TEMPLATE_9': ((0.10, 0.32, 0.16), (0.54, 0.73, 0.22), "DISTINCTION CERTIFICATE"),
-        'TEMPLATE_10': ((0.17, 0.11, 0.37), (0.34, 0.50, 0.95), "CERTIFICATE OF ACHIEVEMENT"),
-    }
-    bg_color, accent_color, heading = style_map.get(exam.certificate_template, style_map['TEMPLATE_1'])
 
     buffer = io.BytesIO()
     p = canvas.Canvas(buffer, pagesize=landscape(letter))
     width, height = landscape(letter)
+    navy = Color(0.10, 0.10, 0.18)
+    gold = Color(0.79, 0.66, 0.30)
+    soft_bg = Color(0.98, 0.98, 0.97)
+    border = Color(0.84, 0.82, 0.78)
+    muted = Color(0.42, 0.42, 0.42)
+    pale_panel = Color(0.94, 0.93, 0.90)
+    verify_bg = Color(0.90, 0.96, 0.92)
+    verify_fg = Color(0.18, 0.42, 0.31)
 
-    if exam.certificate_template_upload:
-        p.drawImage(ImageReader(exam.certificate_template_upload.path), 0, 0, width=width, height=height)
-        p.setFillColorRGB(1, 1, 1)
-        p.setStrokeColorRGB(*bg_color)
-        p.rect(28, 28, width - 56, height - 56, stroke=1, fill=0)
-    else:
-        p.setFillColorRGB(*bg_color)
-        p.rect(0, 0, width, height, stroke=0, fill=1)
-        p.setFillColorRGB(1, 1, 1)
-        p.rect(20, 20, width-40, height-40, stroke=1, fill=1)
+    certificate_id = build_certificate_id(attempt)
+    student_name = attempt.user.get_full_name() or attempt.user.username
+    issued_by = exam.created_by.get_full_name() if exam.created_by and exam.created_by.get_full_name() else (exam.created_by.username if exam.created_by else "ExamFlow")
+    completion_date = (attempt.submitted_at or timezone.now()).strftime("%d %B %Y")
+    duration_label = exam.duration_label
 
-    p.setFillColorRGB(*bg_color)
-    p.setFont("Helvetica-Bold", 40)
-    p.drawCentredString(width/2.0, height-100, heading)
+    p.setFillColor(soft_bg)
+    p.rect(0, 0, width, height, stroke=0, fill=1)
+    p.setFillColor(navy)
+    p.rect(0, 0, 8, height, stroke=0, fill=1)
+    p.setFillColor(gold)
+    p.rect(8, 0, 3, height, stroke=0, fill=1)
 
-    p.setFont("Helvetica", 20)
-    p.drawCentredString(width/2.0, height-160, "This is to certify that")
+    p.setStrokeColor(border)
+    p.setLineWidth(1)
+    p.rect(24, 20, width - 44, height - 40, stroke=1, fill=0)
+    p.setStrokeColor(navy)
+    p.rect(28, 24, width - 52, height - 48, stroke=1, fill=0)
 
-    p.setFont("Helvetica-Bold", 30)
-    p.setFillColorRGB(*accent_color)
-    p.drawCentredString(width/2.0, height-210, attempt.user.get_full_name() or attempt.user.username)
+    for x in range(60, int(width - 40), 24):
+        for y in range(50, int(height - 40), 24):
+            p.setFillColor(Color(0.93, 0.94, 0.96))
+            p.circle(x, y, 0.6, stroke=0, fill=1)
 
-    p.setFillColorRGB(*bg_color)
-    p.setFont("Helvetica", 20)
-    p.drawCentredString(width/2.0, height-270, "has successfully completed the exam")
+    p.setFillColor(navy)
+    p.roundRect(46, height - 65, 22, 22, 4, stroke=0, fill=1)
+    p.setFillColor(gold)
+    p.setFont("Helvetica-Bold", 14)
+    p.drawCentredString(57, height - 50, "*")
+    p.setFillColor(navy)
+    p.setFont("Helvetica-Bold", 16)
+    p.drawString(78, height - 51, "Exam")
+    p.setFillColor(gold)
+    p.drawString(118, height - 51, "Flow")
 
-    p.setFont("Helvetica-Bold", 25)
-    p.drawCentredString(width/2.0, height-320, exam.title)
+    p.setFillColor(muted)
+    p.setFont("Helvetica", 9)
+    p.drawRightString(width - 48, height - 38, "CERTIFICATE NO.")
+    p.setFillColor(navy)
+    p.setFont("Helvetica-Bold", 10)
+    p.drawRightString(width - 48, height - 52, certificate_id)
 
-    p.setFont("Helvetica", 16)
-    p.drawCentredString(width/2.0, height-380, f"With a score of {attempt.percentage}% on {attempt.submitted_at.strftime('%B %d, %Y')}")
+    p.setFillColor(gold)
+    p.rect(42, height - 82, width - 84, 2, stroke=0, fill=1)
 
-    p.setFont("Helvetica-Oblique", 14)
-    p.drawCentredString(width/2.0, height-450, "ExamFlow Platform")
+    left_x = 46
+    right_x = width - 182
+    divider_x = width - 205
+    top_y = height - 110
+
+    p.setFillColor(gold)
+    p.setFont("Helvetica", 10)
+    p.drawString(left_x, top_y, "CERTIFICATE OF ACHIEVEMENT")
+    p.setFillColor(navy)
+    p.setFont("Times-Bold", 28)
+    p.drawString(left_x, top_y - 30, "Certificate of")
+    p.drawString(left_x, top_y - 60, "Completion")
+
+    p.setFillColor(muted)
+    p.setFont("Helvetica", 10)
+    p.drawString(left_x, top_y - 94, "PRESENTED TO")
+
+    p.setFillColor(navy)
+    p.setFont("Times-Bold", 24)
+    p.drawString(left_x, top_y - 124, student_name[:45])
+    p.setStrokeColor(gold)
+    p.line(left_x, top_y - 132, width - 240, top_y - 132)
+
+    p.setFillColor(muted)
+    p.setFont("Helvetica", 11)
+    text = p.beginText(left_x, top_y - 160)
+    text.setLeading(15)
+    text.textLines(
+        "has successfully completed all requirements and demonstrated proficiency\n"
+        "in the following examination administered through the ExamFlow platform."
+    )
+    p.drawText(text)
+
+    panel_y = 124
+    panel_h = 112
+    p.setFillColor(pale_panel)
+    p.setStrokeColor(border)
+    p.roundRect(left_x, panel_y, width - 300, panel_h, 6, stroke=1, fill=1)
+
+    p.setFillColor(gold)
+    p.setFont("Helvetica", 9)
+    p.drawString(left_x + 14, panel_y + panel_h - 18, "EXAMINATION TITLE")
+    p.setFillColor(navy)
+    p.setFont("Times-Bold", 16)
+    p.drawString(left_x + 14, panel_y + panel_h - 38, exam.title[:55])
+
+    p.setFillColor(navy)
+    p.roundRect(width - 268, panel_y + panel_h - 28, 70, 18, 9, stroke=0, fill=1)
+    p.setFillColor(gold)
+    p.setFont("Helvetica-Bold", 9)
+    p.drawCentredString(width - 233, panel_y + panel_h - 22, f"Score: {attempt.percentage:.0f}%")
+
+    meta_y = panel_y + 36
+    meta_width = (width - 340) / 3
+    meta_values = [
+        ("DATE OF COMPLETION", completion_date),
+        ("DURATION", duration_label),
+        ("ISSUED BY", issued_by[:28]),
+    ]
+    for index, (label, value) in enumerate(meta_values):
+        current_x = left_x + 14 + (meta_width * index)
+        p.setFillColor(muted)
+        p.setFont("Helvetica", 8)
+        p.drawString(current_x, meta_y + 24, label)
+        p.setStrokeColor(gold)
+        p.line(current_x, meta_y + 6, current_x + meta_width - 20, meta_y + 6)
+        p.setFillColor(navy)
+        p.setFont("Helvetica-Bold", 10)
+        p.drawString(current_x, meta_y + 10, value)
+
+    p.setStrokeColor(border)
+    p.line(divider_x, 60, divider_x, height - 110)
+
+    seal_center_x = right_x + 60
+    seal_center_y = height - 175
+    p.setStrokeColor(gold)
+    p.setLineWidth(2)
+    p.circle(seal_center_x, seal_center_y, 38, stroke=1, fill=0)
+    p.setLineWidth(1)
+    p.circle(seal_center_x, seal_center_y, 30, stroke=1, fill=0)
+    p.setFillColor(gold)
+    p.setFont("Helvetica-Bold", 12)
+    p.drawCentredString(seal_center_x, seal_center_y + 5, "*")
+    p.setFillColor(gold)
+    p.setFont("Helvetica-Bold", 8)
+    p.drawCentredString(seal_center_x, seal_center_y - 8, "ExamFlow")
+    p.drawCentredString(seal_center_x, seal_center_y - 18, "Verified")
+
+    def draw_signature_block(y, label, signer):
+        p.setStrokeColor(navy)
+        p.line(right_x, y, width - 48, y)
+        p.setFillColor(navy)
+        p.setFont("Helvetica-Oblique", 12)
+        p.drawCentredString((right_x + width - 48) / 2, y + 8, signer[:28])
+        p.setFillColor(muted)
+        p.setFont("Helvetica", 8)
+        p.drawCentredString((right_x + width - 48) / 2, y - 12, label)
+
+    draw_signature_block(175, "Exam Provider", issued_by)
+    draw_signature_block(115, "ExamFlow Director", "ExamFlow Team")
+
+    p.setStrokeColor(border)
+    p.line(42, 64, width - 42, 64)
+    p.setFillColor(muted)
+    p.setFont("Helvetica", 8)
+    p.drawString(46, 49, "ISSUED BY")
+    p.setFillColor(navy)
+    p.setFont("Helvetica-Bold", 10)
+    p.drawString(98, 49, issued_by[:42])
+
+    p.setFillColor(verify_bg)
+    p.setStrokeColor(Color(0.58, 0.84, 0.70))
+    p.roundRect(width - 118, 40, 72, 18, 9, stroke=1, fill=1)
+    p.setFillColor(verify_fg)
+    p.setFont("Helvetica-Bold", 8)
+    p.drawCentredString(width - 82, 46, "VERIFIED")
     
     p.showPage()
     p.save()
     buffer.seek(0)
 
     return HttpResponse(buffer, content_type='application/pdf', headers={
-        'Content-Disposition': f'attachment; filename="{exam.slug}-certificate.pdf"',
+        'Content-Disposition': f'attachment; filename="{certificate_id.lower()}-{exam.slug}-certificate.pdf"',
     })
