@@ -1,11 +1,17 @@
 try:
-    import pymysql
+    import MySQLdb  # Prefer mysqlclient when available.
 except ImportError:
-    pymysql = None
+    MySQLdb = None
 
-if pymysql is not None:
-    pymysql.install_as_MySQLdb()
+if MySQLdb is None:
+    try:
+        import pymysql
+    except ImportError:
+        pymysql = None
 
-    import MySQLdb
+    if pymysql is not None:
+        pymysql.install_as_MySQLdb()
 
-    MySQLdb.version_info = (2, 2, 1, 'final', 0)
+        import MySQLdb
+
+        MySQLdb.version_info = (2, 2, 1, 'final', 0)

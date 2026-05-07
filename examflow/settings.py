@@ -119,7 +119,7 @@ def build_mysql_options():
 
     if ssl_ca_path:
         options['ssl'] = {'ca': ssl_ca_path}
-    if ssl_mode:
+    if ssl_mode and importlib.util.find_spec('MySQLdb'):
         options['ssl_mode'] = ssl_mode
 
     return options
