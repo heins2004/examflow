@@ -67,7 +67,7 @@
                             <span class="badge bg-secondary">{{ exam.get_exam_type_display }}</span>
                         </div>
                         <h5 class="card-title text-truncate">{{ exam.title }}</h5>
-                        <div class="small text-muted mb-2">Exam code: {{ exam.exam_code }}</div>
+                        <div class="small text-muted mb-2">Public access: no exam code required</div>
                         <p class="text-muted small mb-3">{{ exam.description|truncatewords:14 }}</p>
                         <div class="d-flex justify-content-between text-muted small mt-3">
                             <span><i class="fas fa-list-ol text-accent"></i> {{ exam.questions.count }} Qs</span>

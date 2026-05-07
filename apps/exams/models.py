@@ -90,7 +90,7 @@ class Exam(models.Model):
 
     @property
     def requires_pass_key(self):
-        return bool(self.pass_key)
+        return self.visibility == 'PRIVATE' and bool(self.pass_key)
 
     @property
     def duration_label(self):

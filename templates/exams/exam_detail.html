@@ -31,7 +31,11 @@
 
         <div class="d-flex flex-wrap gap-2 mb-4">
             <span class="badge {% if exam.visibility == 'PUBLIC' %}bg-success{% else %}bg-dark{% endif %}">{{ exam.get_visibility_display }}</span>
+            {% if exam.visibility == 'PRIVATE' %}
             <span class="badge bg-secondary">Exam code: {{ exam.exam_code }}</span>
+            {% else %}
+            <span class="badge bg-success-subtle text-success-emphasis">No exam code needed</span>
+            {% endif %}
             <span class="badge {% if exam.is_released %}bg-success{% else %}bg-warning text-dark{% endif %}">{% if exam.is_released %}Released{% else %}Not released{% endif %}</span>
             {% if exam.requires_pass_key %}
             <span class="badge bg-warning text-dark">Pass key required</span>

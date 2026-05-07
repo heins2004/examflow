@@ -53,6 +53,7 @@ class ExamForm(BootstrapFormMixin, forms.ModelForm):
         cleaned_data = super().clean()
         duration_minutes = cleaned_data.get("duration_minutes")
         is_unlimited_time = cleaned_data.get("is_unlimited_time")
+        visibility = cleaned_data.get("visibility")
         pass_key = (cleaned_data.get("pass_key") or "").strip().upper()
 
         if not is_unlimited_time and not duration_minutes:
@@ -60,6 +61,9 @@ class ExamForm(BootstrapFormMixin, forms.ModelForm):
 
         if is_unlimited_time:
             cleaned_data["duration_minutes"] = None
+
+        if visibility != "PRIVATE":
+            pass_key = ""
 
         cleaned_data["pass_key"] = pass_key
         return cleaned_data
