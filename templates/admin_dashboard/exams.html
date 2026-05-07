@@ -31,7 +31,7 @@
                                 data-exam-attempts="{{ exam.attempts_count }}"
                                 data-exam-passed="{{ exam.passed_count }}"
                                 data-exam-failed="{{ exam.failed_count }}">
-                                <div class="exam-hover-title">{{ exam.title }}</div>
+                                <a href="javascript:void(0)" class="exam-hover-title text-decoration-none">{{ exam.title }}</a>
                             </div>
                         </td>
                         <td><span class="badge bg-secondary">{{ exam.category.name|default:"Uncategorized" }}</span></td>
@@ -109,7 +109,7 @@
     .exam-hover-popup {
         position: fixed;
         width: 320px;
-        pointer-events: auto;
+        pointer-events: none;
         opacity: 0;
         transform: translateY(10px) scale(0.98);
         transition: opacity 0.18s ease, transform 0.18s ease;
@@ -119,6 +119,7 @@
     .exam-hover-popup.is-visible {
         opacity: 1;
         transform: translateY(0) scale(1);
+        pointer-events: auto;
     }
 
     .exam-hover-popup-card {
@@ -166,8 +167,6 @@
         if (!popup || !popupCanvas || !hoverTargets.length) {
             return;
         }
-        let activeTarget = null;
-        let hideTimer = null;
 
         const popupChart = new Chart(popupCanvas, {
             type: "bar",
@@ -197,10 +196,7 @@
         function positionPopup(target) {
             const rect = target.getBoundingClientRect();
             const popupRect = popup.getBoundingClientRect();
-            const top = Math.min(
-                window.innerHeight - popupRect.height - 12,
-                Math.max(12, rect.bottom + 12)
-            );
+            const top = Math.max(12, rect.top - popupRect.height - 12);
             const left = Math.min(
                 window.innerWidth - popupRect.width - 12,
                 Math.max(12, rect.left + (rect.width / 2) - (popupRect.width / 2))
@@ -209,16 +205,7 @@
             popup.style.left = `${left}px`;
         }
 
-        function cancelHide() {
-            if (hideTimer) {
-                clearTimeout(hideTimer);
-                hideTimer = null;
-            }
-        }
-
         function showPopup(target) {
-            cancelHide();
-            activeTarget = target;
             popupTitle.textContent = target.dataset.examTitle;
             attemptsValue.textContent = target.dataset.examAttempts;
             passedValue.textContent = target.dataset.examPassed;
@@ -234,33 +221,30 @@
             positionPopup(target);
         }
 
-        function scheduleHide() {
-            cancelHide();
-            hideTimer = setTimeout(() => {
-                if (!popup.matches(":hover") && (!activeTarget || !activeTarget.matches(":hover"))) {
-                    hidePopup();
-                }
-            }, 140);
-        }
-
         function hidePopup() {
-            cancelHide();
-            activeTarget = null;
             popup.classList.remove("is-visible");
             popup.setAttribute("aria-hidden", "true");
         }
 
         hoverTargets.forEach((target) => {
-            target.addEventListener("mouseenter", () => showPopup(target));
-            target.addEventListener("mouseleave", scheduleHide);
-            target.addEventListener("focusin", () => showPopup(target));
-            target.addEventListener("focusout", scheduleHide);
+            target.addEventListener("click", (event) => {
+                event.stopPropagation();
+                if (popup.classList.contains("is-visible") && popupTitle.textContent === target.dataset.examTitle) {
+                    hidePopup();
+                    return;
+                }
+                showPopup(target);
+            });
         });
 
-        popup.addEventListener("mouseenter", cancelHide);
-        popup.addEventListener("mouseleave", scheduleHide);
-        window.addEventListener("scroll", hidePopup, { passive: true });
+        document.addEventListener("click", (event) => {
+            if (!popup.contains(event.target) && !event.target.closest(".exam-hover-anchor")) {
+                hidePopup();
+            }
+        });
+
         window.addEventListener("resize", hidePopup);
+        window.addEventListener("scroll", hidePopup, { passive: true });
     });
 </script>
 {% endblock %}

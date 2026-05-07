@@ -1,6 +1,7 @@
 import importlib.util
 import os
 from pathlib import Path
+from urllib.parse import urlparse
 
 try:
     from decouple import config
@@ -36,7 +37,18 @@ SECRET_KEY = env_config('SECRET_KEY', default='unsafe-secret-key')
 
 DEBUG = env_config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = ['*']
+allowed_hosts = env_config('ALLOWED_HOSTS', default='*')
+ALLOWED_HOSTS = [host.strip() for host in str(allowed_hosts).split(',') if host.strip()] or ['*']
+
+render_hostname = env_config('RENDER_EXTERNAL_HOSTNAME', default='')
+if render_hostname and render_hostname not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(render_hostname)
+
+csrf_trusted_origins = env_config('CSRF_TRUSTED_ORIGINS', default='')
+CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in str(csrf_trusted_origins).split(',') if origin.strip()]
+render_external_url = env_config('RENDER_EXTERNAL_URL', default='')
+if render_external_url and render_external_url not in CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS.append(render_external_url)
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -63,6 +75,7 @@ AUTH_USER_MODEL = 'accounts.User'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -91,9 +104,49 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'examflow.wsgi.application'
 
+
+def build_mysql_options():
+    options = {
+        'charset': 'utf8mb4',
+        'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+    }
+    ssl_ca_path = env_config('DB_SSL_CA_PATH', default='', legacy_names=['EXAMFLOW_DB_SSL_CA_PATH'])
+    ssl_mode = env_config('DB_SSL_MODE', default='', legacy_names=['EXAMFLOW_DB_SSL_MODE'])
+
+    if ssl_ca_path:
+        options['ssl'] = {'ca': ssl_ca_path}
+    if ssl_mode:
+        options['ssl_mode'] = ssl_mode
+
+    return options
+
+
+database_url = env_config('DATABASE_URL', default='', legacy_names=['EXAMFLOW_DATABASE_URL'])
+
 db_engine = str(env_config('DB_ENGINE', default='mysql', legacy_names=['EXAMFLOW_DB_ENGINE'])).strip().lower()
 
-if db_engine == 'mysql':
+if database_url:
+    parsed = urlparse(database_url)
+    if parsed.scheme.startswith('mysql'):
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.mysql',
+                'NAME': parsed.path.lstrip('/'),
+                'USER': parsed.username or '',
+                'PASSWORD': parsed.password or '',
+                'HOST': parsed.hostname or '127.0.0.1',
+                'PORT': str(parsed.port or '3306'),
+                'OPTIONS': build_mysql_options(),
+            }
+        }
+    else:
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': BASE_DIR / 'db.sqlite3',
+            }
+        }
+elif db_engine == 'mysql':
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
@@ -102,10 +155,7 @@ if db_engine == 'mysql':
             'PASSWORD': env_config('DB_PASSWORD', default='', legacy_names=['EXAMFLOW_DB_PASSWORD']),
             'HOST': env_config('DB_HOST', default='127.0.0.1', legacy_names=['EXAMFLOW_DB_HOST']),
             'PORT': env_config('DB_PORT', default='3306', legacy_names=['EXAMFLOW_DB_PORT']),
-            'OPTIONS': {
-                'charset': 'utf8mb4',
-                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-            },
+            'OPTIONS': build_mysql_options(),
         }
     }
 else:
@@ -131,6 +181,7 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -141,3 +192,9 @@ LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'login'
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = env_config('SECURE_SSL_REDIRECT', default=True, cast=bool)

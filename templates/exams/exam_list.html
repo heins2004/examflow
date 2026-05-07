@@ -28,13 +28,11 @@
                     <a href="{% url 'exam_list' %}"
                         class="category-link {% if not current_category %}active{% endif %}">
                         <span>All categories</span>
-                        <span class="badge bg-secondary rounded-pill">{{ categories|length }}</span>
                     </a>
                     {% for cat in categories %}
                     <a href="?category={{ cat.slug }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}"
                         class="category-link {% if current_category == cat.slug %}active{% endif %}">
                         <span>{% if cat.icon %}{{ cat.icon }} {% endif %}{{ cat.name }}</span>
-                        <span class="badge bg-secondary rounded-pill">{{ cat.exams.count }}</span>
                     </a>
                     {% endfor %}
                 </div>

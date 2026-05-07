@@ -1,18 +1,38 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from apps.exams.models import Category, Exam, Question, Option
-from django.utils.text import slugify
+from django.conf import settings
 
 class Command(BaseCommand):
     help = 'Seeds the database with sample categories, exams, questions, and an admin user'
 
     def handle(self, *args, **kwargs):
         User = get_user_model()
-        
-        # Create Admin
-        if not User.objects.filter(username='admin').exists():
-            User.objects.create_superuser('admin', 'admin@example.com', 'admin')
-            self.stdout.write(self.style.SUCCESS("Created admin user (admin/admin)"))
+
+        admin_username = 'admin321'
+        admin_email = 'admin321@example.com'
+        admin_password = 'admin@$321'
+
+        admin_user, created = User.objects.get_or_create(
+            username=admin_username,
+            defaults={
+                'email': admin_email,
+                'role': 'ADMIN',
+                'is_staff': True,
+                'is_superuser': True,
+            },
+        )
+        admin_user.email = admin_email
+        admin_user.role = 'ADMIN'
+        admin_user.is_staff = True
+        admin_user.is_superuser = True
+        admin_user.is_active = True
+        admin_user.set_password(admin_password)
+        admin_user.save()
+        if created:
+            self.stdout.write(self.style.SUCCESS("Created admin user (admin321/admin@$321)"))
+        else:
+            self.stdout.write(self.style.SUCCESS("Updated admin user credentials for admin321"))
 
         # Create Student
         if not User.objects.filter(username='student').exists():

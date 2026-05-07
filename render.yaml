@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: examflow
+    runtime: python
+    buildCommand: ./build.sh
+    startCommand: gunicorn examflow.wsgi:application
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DEBUG
+        value: "False"
+      - key: DB_ENGINE
+        value: mysql

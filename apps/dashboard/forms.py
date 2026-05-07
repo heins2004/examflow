@@ -32,7 +32,6 @@ class ExamForm(BootstrapFormMixin, forms.ModelForm):
         self.fields["category"].required = False
         self.fields["category"].empty_label = "No category"
         self.fields["category"].queryset = Category.objects.order_by("name")
-        self.fields["category"].widget.attrs.update({"size": 8})
 
     def clean_slug(self):
         slug = (self.cleaned_data.get("slug") or "").strip()
