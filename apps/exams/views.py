@@ -75,6 +75,9 @@ def exam_join_by_code(request):
         exam = Exam.objects.filter(exam_code=exam_code, is_active=True, is_released=True).first()
         if not exam:
             messages.error(request, "No exam was found for that exam code.")
+        elif exam.visibility == 'PUBLIC':
+            messages.info(request, f"{exam.title} is a public exam. You can directly access it.")
+            return redirect('exam_detail', slug=exam.slug)
         else:
             ExamAccess.objects.get_or_create(user=request.user, exam=exam)
             joined_exam = exam

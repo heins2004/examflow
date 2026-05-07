@@ -6,6 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Examiner Dashboard | ExamFlow{% endblock %}</title>
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
     <!-- Fonts -->
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap"
@@ -18,7 +19,7 @@
             document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
         })();
     </script>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=1.1">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     {% block extra_css %}{% endblock %}
 </head>
@@ -29,7 +30,8 @@
     <div class="dashboard-wrap dashboard-sidebar-collapsed">
         <div class="dashboard-sidebar-backdrop" id="dashboardSidebarBackdrop" aria-hidden="true"></div>
         <!-- Sidebar -->
-        <aside id="dashboardSidebar" class="sidebar d-flex flex-column p-3" role="navigation" aria-label="Examiner navigation">
+        <aside id="dashboardSidebar" class="sidebar d-flex flex-column p-3" role="navigation"
+            aria-label="Examiner navigation">
             <a href="/" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none px-2">
                 <span class="fs-4 fw-bold" style="font-family: 'Poppins', sans-serif;">Examiner Dashboard</span>
             </a>
@@ -59,7 +61,8 @@
                 <div class="container-fluid">
                     <span class="navbar-brand mb-0 h1 d-flex align-items-center">
                         <button class="btn btn-outline-secondary me-3 border-0" id="sidebarToggle" type="button"
-                            aria-controls="dashboardSidebar" aria-expanded="true" aria-label="Open or close navigation menu">
+                            aria-controls="dashboardSidebar" aria-expanded="true"
+                            aria-label="Open or close navigation menu">
                             <i class="fas fa-bars" aria-hidden="true"></i>
                         </button>
                         {% block content_title %}Dashboard{% endblock %}

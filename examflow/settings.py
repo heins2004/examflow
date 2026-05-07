@@ -2,6 +2,10 @@ import importlib.util
 import os
 from pathlib import Path
 from urllib.parse import urlparse
+import mimetypes
+
+mimetypes.add_type("text/css", ".css", True)
+mimetypes.add_type("application/javascript", ".js", True)
 
 try:
     from decouple import config

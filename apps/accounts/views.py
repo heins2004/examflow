@@ -7,7 +7,11 @@ from .models import User
 from apps.exams.models import ExamAttempt, Exam
 
 def home(request):
-    featured_exams = Exam.objects.filter(is_active=True).order_by('-created_at')[:3]
+    featured_exams = Exam.objects.filter(
+        is_active=True,
+        is_released=True,
+        visibility='PUBLIC',
+    ).order_by('-created_at')[:3]
     return render(request, 'accounts/home.html', {'exams': featured_exams})
 
 def register(request):

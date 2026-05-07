@@ -26,19 +26,27 @@
                     {% for exam in exams %}
                     <tr>
                         <td class="ps-3 fw-bold">
-                            <div class="exam-hover-anchor"
-                                data-exam-title="{{ exam.title|escape }}"
+                            <div class="exam-hover-anchor" data-exam-title="{{ exam.title|escape }}"
                                 data-exam-attempts="{{ exam.attempts_count }}"
-                                data-exam-passed="{{ exam.passed_count }}"
-                                data-exam-failed="{{ exam.failed_count }}">
-                                <a href="javascript:void(0)" class="exam-hover-title text-decoration-none">{{ exam.title }}</a>
+                                data-exam-passed="{{ exam.passed_count }}" data-exam-failed="{{ exam.failed_count }}">
+                                <a href="javascript:void(0)" class="exam-hover-title text-decoration-none">{{ exam.title
+                                    }}</a>
                             </div>
                         </td>
-                        <td><span class="badge bg-secondary">{{ exam.category.name|default:"Uncategorized" }}</span></td>
+                        <td><span class="badge bg-secondary">{{ exam.category.name|default:"Uncategorized" }}</span>
+                        </td>
                         <td>{{ exam.get_exam_type_display }}</td>
-                        <td><span class="badge {% if exam.visibility == 'PUBLIC' %}bg-success{% else %}bg-dark{% endif %}">{{ exam.get_visibility_display }}</span></td>
+                        <td><span
+                                class="badge {% if exam.visibility == 'PUBLIC' %}bg-success{% else %}bg-dark{% endif %}">{{
+                                exam.get_visibility_display }}</span></td>
                         <td class="small text-muted text-nowrap">{{ exam.created_at|date:"M j, Y" }}</td>
-                        <td class="small">{{ exam.exam_code }}</td>
+                        <td class="small">
+                            {% if exam.visibility == 'PRIVATE' %}
+                            {{ exam.exam_code }}
+                            {% else %}
+                            <span class="text-muted">Not required</span>
+                            {% endif %}
+                        </td>
                         <td class="pe-3 text-end">
                             <a href="{% url 'dashboard_questions' exam_id=exam.pk %}" class="btn btn-sm btn-primary">
                                 <i class="fas fa-list-check me-1"></i> View Questions
