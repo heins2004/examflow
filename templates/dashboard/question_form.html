@@ -16,6 +16,7 @@
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
 
+            {{ form.non_field_errors }}
             {{ form.exam|crispy }}
             {{ form.question_text|crispy }}
             {{ form.image|crispy }}
@@ -156,7 +157,7 @@
         const remainingMarksText = document.getElementById("remainingMarksText");
         const baseRemainingMarks = {{ remaining_marks|default:"0" }};
     const isEditing = {% if object %}true{% else %}false{% endif %};
-    const currentMarks = {{ object.marks|default: "0" }};
+    const currentMarks = {{ object.marks|default:"0" }};
 
     function syncQuestionTypePanels() {
         const selected = document.querySelector('input[name="question_type"]:checked');
