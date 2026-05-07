@@ -5,6 +5,32 @@ from django.db import migrations, models
 import django.db.models.deletion
 
 
+def _column_names(schema_editor, table_name):
+    with schema_editor.connection.cursor() as cursor:
+        description = schema_editor.connection.introspection.get_table_description(cursor, table_name)
+    return {column.name for column in description}
+
+
+def add_exam_fields_if_missing(apps, schema_editor):
+    Exam = apps.get_model('exams', 'Exam')
+    table_name = Exam._meta.db_table
+    existing_columns = _column_names(schema_editor, table_name)
+
+    for field_name in ('access_code', 'exam_code', 'pass_key', 'visibility'):
+        if field_name in existing_columns:
+            continue
+        field = Exam._meta.get_field(field_name)
+        schema_editor.add_field(Exam, field)
+
+
+def create_exam_access_if_missing(apps, schema_editor):
+    ExamAccess = apps.get_model('exams', 'ExamAccess')
+    table_name = ExamAccess._meta.db_table
+    existing_tables = set(schema_editor.connection.introspection.table_names())
+    if table_name not in existing_tables:
+        schema_editor.create_model(ExamAccess)
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -13,36 +39,44 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='exam',
-            name='access_code',
-            field=models.CharField(blank=True, max_length=20, null=True),
-        ),
-        migrations.AddField(
-            model_name='exam',
-            name='exam_code',
-            field=models.CharField(blank=True, max_length=20, null=True, unique=True),
-        ),
-        migrations.AddField(
-            model_name='exam',
-            name='pass_key',
-            field=models.CharField(blank=True, max_length=20, null=True),
-        ),
-        migrations.AddField(
-            model_name='exam',
-            name='visibility',
-            field=models.CharField(choices=[('PUBLIC', 'Public'), ('PRIVATE', 'Private')], default='PUBLIC', max_length=20),
-        ),
-        migrations.CreateModel(
-            name='ExamAccess',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('granted_at', models.DateTimeField(auto_now_add=True)),
-                ('exam', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='accesses', to='exams.exam')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='exam_accesses', to=settings.AUTH_USER_MODEL)),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunPython(add_exam_fields_if_missing, migrations.RunPython.noop),
+                migrations.RunPython(create_exam_access_if_missing, migrations.RunPython.noop),
             ],
-            options={
-                'unique_together': {('user', 'exam')},
-            },
+            state_operations=[
+                migrations.AddField(
+                    model_name='exam',
+                    name='access_code',
+                    field=models.CharField(blank=True, max_length=20, null=True),
+                ),
+                migrations.AddField(
+                    model_name='exam',
+                    name='exam_code',
+                    field=models.CharField(blank=True, max_length=20, null=True, unique=True),
+                ),
+                migrations.AddField(
+                    model_name='exam',
+                    name='pass_key',
+                    field=models.CharField(blank=True, max_length=20, null=True),
+                ),
+                migrations.AddField(
+                    model_name='exam',
+                    name='visibility',
+                    field=models.CharField(choices=[('PUBLIC', 'Public'), ('PRIVATE', 'Private')], default='PUBLIC', max_length=20),
+                ),
+                migrations.CreateModel(
+                    name='ExamAccess',
+                    fields=[
+                        ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                        ('granted_at', models.DateTimeField(auto_now_add=True)),
+                        ('exam', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='accesses', to='exams.exam')),
+                        ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='exam_accesses', to=settings.AUTH_USER_MODEL)),
+                    ],
+                    options={
+                        'unique_together': {('user', 'exam')},
+                    },
+                ),
+            ],
         ),
     ]
