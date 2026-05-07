@@ -11,24 +11,62 @@ def _column_names(schema_editor, table_name):
     return {column.name for column in description}
 
 
-def add_exam_fields_if_missing(apps, schema_editor):
-    Exam = apps.get_model('exams', 'Exam')
-    table_name = Exam._meta.db_table
-    existing_columns = _column_names(schema_editor, table_name)
-
-    for field_name in ('access_code', 'exam_code', 'pass_key', 'visibility'):
-        if field_name in existing_columns:
-            continue
-        field = Exam._meta.get_field(field_name)
-        schema_editor.add_field(Exam, field)
+def _constraint_names(schema_editor, table_name):
+    with schema_editor.connection.cursor() as cursor:
+        constraints = schema_editor.connection.introspection.get_constraints(cursor, table_name)
+    return set(constraints.keys())
 
 
-def create_exam_access_if_missing(apps, schema_editor):
-    ExamAccess = apps.get_model('exams', 'ExamAccess')
-    table_name = ExamAccess._meta.db_table
+def sync_exam_schema(apps, schema_editor):
+    exam_table = apps.get_model('exams', 'Exam')._meta.db_table
+    user_table = apps.get_model(settings.AUTH_USER_MODEL.split('.')[0], settings.AUTH_USER_MODEL.split('.')[1])._meta.db_table
+    exam_access_table = 'exams_examaccess'
+
+    existing_columns = _column_names(schema_editor, exam_table)
+    constraints = _constraint_names(schema_editor, exam_table)
+    quote = schema_editor.quote_name
+
+    statements = []
+    if 'access_code' not in existing_columns:
+        statements.append(f"ADD COLUMN {quote('access_code')} varchar(20) NULL")
+    if 'exam_code' not in existing_columns:
+        statements.append(f"ADD COLUMN {quote('exam_code')} varchar(20) NULL")
+    if 'pass_key' not in existing_columns:
+        statements.append(f"ADD COLUMN {quote('pass_key')} varchar(20) NULL")
+    if 'visibility' not in existing_columns:
+        statements.append(
+            f"ADD COLUMN {quote('visibility')} varchar(20) NOT NULL DEFAULT 'PUBLIC'"
+        )
+
+    if statements:
+        schema_editor.execute(
+            f"ALTER TABLE {quote(exam_table)} " + ", ".join(statements)
+        )
+
+    constraints = _constraint_names(schema_editor, exam_table)
+    if 'exam_code' in _column_names(schema_editor, exam_table) and 'exam_code' not in constraints:
+        schema_editor.execute(
+            f"ALTER TABLE {quote(exam_table)} ADD CONSTRAINT {quote('exam_code')} UNIQUE ({quote('exam_code')})"
+        )
+
     existing_tables = set(schema_editor.connection.introspection.table_names())
-    if table_name not in existing_tables:
-        schema_editor.create_model(ExamAccess)
+    if exam_access_table not in existing_tables:
+        schema_editor.execute(
+            f"""
+            CREATE TABLE {quote(exam_access_table)} (
+                {quote('id')} bigint AUTO_INCREMENT NOT NULL PRIMARY KEY,
+                {quote('granted_at')} datetime(6) NOT NULL,
+                {quote('exam_id')} bigint NOT NULL,
+                {quote('user_id')} bigint NOT NULL,
+                CONSTRAINT {quote('exams_examaccess_user_id_exam_id_uniq')}
+                    UNIQUE ({quote('user_id')}, {quote('exam_id')}),
+                CONSTRAINT {quote('exams_examaccess_exam_id_fk')}
+                    FOREIGN KEY ({quote('exam_id')}) REFERENCES {quote(exam_table)} ({quote('id')}),
+                CONSTRAINT {quote('exams_examaccess_user_id_fk')}
+                    FOREIGN KEY ({quote('user_id')}) REFERENCES {quote(user_table)} ({quote('id')})
+            )
+            """
+        )
 
 
 class Migration(migrations.Migration):
@@ -41,8 +79,7 @@ class Migration(migrations.Migration):
     operations = [
         migrations.SeparateDatabaseAndState(
             database_operations=[
-                migrations.RunPython(add_exam_fields_if_missing, migrations.RunPython.noop),
-                migrations.RunPython(create_exam_access_if_missing, migrations.RunPython.noop),
+                migrations.RunPython(sync_exam_schema, migrations.RunPython.noop),
             ],
             state_operations=[
                 migrations.AddField(
